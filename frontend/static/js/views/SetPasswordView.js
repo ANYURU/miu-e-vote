@@ -84,7 +84,7 @@ class SetPasswordView extends AbstractView {
             password: password,
           });
 
-          navigateTo("/dashboard");
+          navigateTo("/elections");
         } else {
           // Notify the user that they are already registered.
         }

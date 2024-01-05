@@ -6,11 +6,10 @@ export default class extends AbstractView {
     this.setTitle("404");
   }
 
-  async getHtml() {
-    return `
-              <p>
-                  404, Resource not found
-              </p>
-          `;
+  async renderContent() {
+    const paragraph = document.createElement("p");
+    paragraph.textContent = "404, Resource not found";
+
+    return paragraph;
   }
 }

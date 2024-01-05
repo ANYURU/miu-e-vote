@@ -105,7 +105,7 @@ class LoginView extends AbstractView {
       }
 
       if (data?.session) {
-        navigateTo("/dashboard");
+        navigateTo("/elections");
         // Alert the user that they have successfully logged in
       }
     });
@@ -116,12 +116,12 @@ class LoginView extends AbstractView {
     const signUpLink = document.createElement("span");
     signUpLink.className = "text-sm";
     signUpLink.innerHTML =
-      'Are you a new student? <a class="text-success-500 hover:font-semibold" href="/sign-up">Sign Up</a>';
+      'Are you a new student? <a class="text-success-500 hover:font-semibold" href="/sign-up" data-link>Sign Up</a>';
 
     const forgotPasswordLink = document.createElement("span");
     forgotPasswordLink.className = "text-sm";
     forgotPasswordLink.innerHTML =
-      'Forgot Password? <a class="text-success-500 hover:font-semibold" href="/forgot-password">Reset Password</a>';
+      'Forgot Password? <a class="text-success-500 hover:font-semibold" href="/forgot-password" data-link>Reset Password</a>';
 
     linkContainer.appendChild(signUpLink);
     linkContainer.appendChild(forgotPasswordLink);

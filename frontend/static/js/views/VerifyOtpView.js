@@ -90,7 +90,7 @@ class VerifyOtpView extends AbstractView {
     const changeEmailLink = document.createElement("span");
     changeEmailLink.className = "text-sm";
     changeEmailLink.innerHTML =
-      '<a class="text-success-500 hover:font-semibold" href="/sign-up">Change Email</a>';
+      '<a class="text-success-500 hover:font-semibold" href="/sign-up" data-link>Change Email</a>';
 
     linkContainer.appendChild(resendOtpButton);
     linkContainer.appendChild(changeEmailLink);

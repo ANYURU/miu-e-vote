@@ -1,10 +1,13 @@
-import Dashboard from "./views/Dashboard.js";
+import Elections from "./views/Elections.js";
 import NotFoundView from "./views/NotFoundView.js";
 import LoginView from "./views/LoginView.js";
 import SignUpView from "./views/SignUpView.js";
 import SetPasswordView from "./views/SetPasswordView.js";
-import Candidates from "./views/CandidatesView.js";
+import Apply from "./views/ApplyView.js";
+import Notifications from "./views/NotificationsView.js";
 import VerifyOtpView from "./views/VerifyOtpView.js";
+import Results from "./views/ResultsView.js";
+import Profile from "./views/ProfileView.js";
 import createSupabaseClient from "./supabase/supabase.js";
 
 const supabaseClient = createSupabaseClient(
@@ -41,13 +44,33 @@ const router = async (supabaseClient) => {
       requiresAuth: false,
     },
     {
-      path: "/dashboard",
-      view: Dashboard,
+      path: "/elections",
+      view: Elections,
       requiresAuth: true,
     },
     {
       path: "/candidates",
       view: () => console.log("Viewing Settings"),
+      requiresAuth: true,
+    },
+    {
+      path: "/apply",
+      view: Apply,
+      requiresAuth: true,
+    },
+    {
+      path: "/notifications",
+      view: Notifications,
+      requiresAuth: true,
+    },
+    {
+      path: "/results",
+      view: Results,
+      requiresAuth: true,
+    },
+    {
+      path: "/profile",
+      view: Profile,
       requiresAuth: true,
     },
     {

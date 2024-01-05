@@ -87,7 +87,7 @@ export default class SignUpView extends AbstractView {
     const loginLink = document.createElement("span");
     loginLink.className = "text-sm";
     loginLink.innerHTML =
-      'Already have an account? <a class="text-success-500 hover:font-semibold" href="/">Login</a>';
+      'Already have an account? <a class="text-success-500 hover:font-semibold" href="/" data-link>Login</a>';
 
     linkContainer.appendChild(loginLink);
 
