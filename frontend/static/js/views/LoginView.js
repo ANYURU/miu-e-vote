@@ -87,12 +87,27 @@ class LoginView extends AbstractView {
     loginButton.type = "button";
     loginButton.textContent = "Login";
 
-    loginButton.addEventListener("click", (event) => {
+    loginButton.addEventListener("click", async (event) => {
       event.preventDefault();
       const email = emailInput.value;
       const password = passwordInput.value;
-      console.log("email: ", email);
-      console.log("password: ", password);
+
+      const { data, error } = await supabaseClient.auth.signInWithPassword({
+        email,
+        password,
+      });
+
+      if (error) {
+        /**
+         * Alert the user that there was an error logging in
+         */
+        console.log(error);
+      }
+
+      if (data?.session) {
+        navigateTo("/dashboard");
+        // Alert the user that they have successfully logged in
+      }
     });
 
     const linkContainer = document.createElement("div");
