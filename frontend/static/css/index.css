@@ -606,6 +606,11 @@ video {
   position: relative;
 }
 
+.my-10 {
+  margin-top: 2.5rem;
+  margin-bottom: 2.5rem;
+}
+
 .flex {
   display: flex;
 }
@@ -620,6 +625,10 @@ video {
 
 .h-20 {
   height: 5rem;
+}
+
+.h-24 {
+  height: 6rem;
 }
 
 .h-8 {
@@ -655,6 +664,10 @@ video {
   width: 5rem;
 }
 
+.w-24 {
+  width: 6rem;
+}
+
 .w-5\/6 {
   width: 83.333333%;
 }
@@ -674,6 +687,15 @@ video {
 
 .w-screen {
   width: 100vw;
+}
+
+.min-w-fit {
+  min-width: -moz-fit-content;
+  min-width: fit-content;
+}
+
+.max-w-48 {
+  max-width: 12rem;
 }
 
 @keyframes spin {
@@ -744,6 +766,10 @@ video {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.rounded-full {
+  border-radius: 9999px;
 }
 
 .rounded-md {
@@ -825,8 +851,12 @@ video {
   text-align: center;
 }
 
-.text-\[10px\] {
-  font-size: 10px;
+.text-\[0\.725rem\] {
+  font-size: 0.725rem;
+}
+
+.text-\[1\.4rem\] {
+  font-size: 1.4rem;
 }
 
 .text-sm {
@@ -837,26 +867,6 @@ video {
 .text-xs {
   font-size: 0.75rem;
   line-height: 1rem;
-}
-
-.text-\[1\.4rem\] {
-  font-size: 1.4rem;
-}
-
-.text-\[0\.625rem\] {
-  font-size: 0.625rem;
-}
-
-.text-\[0\.8rem\] {
-  font-size: 0.8rem;
-}
-
-.text-\[0\.7rem\] {
-  font-size: 0.7rem;
-}
-
-.text-\[0\.725rem\] {
-  font-size: 0.725rem;
 }
 
 .font-light {
@@ -902,18 +912,6 @@ video {
 .text-white {
   --tw-text-opacity: 1;
   color: rgb(255 255 255 / var(--tw-text-opacity));
-}
-
-.text-\[1\.4\] {
-  color: 1.4;
-}
-
-.text-\[0\.625\] {
-  color: 0.625;
-}
-
-.text-\[0\.rem\] {
-  color: 0.rem;
 }
 
 .outline-none {
