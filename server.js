@@ -31,6 +31,7 @@ app.get("/*", (req, res) => {
         </script>
         <title>Single Page App</title>
         <link rel="stylesheet" href="/static/css/index.css">
+        <link rel="shortcut icon" href="/static/assets/images/miu-logo.png" />
     </head>
     <body class="bg-white">
         <div id="app"></div>
