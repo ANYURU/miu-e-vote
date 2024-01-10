@@ -144,7 +144,6 @@ class LoginView extends AbstractView {
     emailInput.name = "email";
     emailInput.id = "email";
     emailInput.placeholder = "Enter University Email";
-    // emailInput.ariaInvalid = false;
 
     const emailError = document.createElement("p");
     emailError.id = "email-error-element";
@@ -180,18 +179,33 @@ class LoginView extends AbstractView {
 
     loginButton.addEventListener("click", async (event) => {
       event.preventDefault();
+
+      if (this.isSubmitting) {
+        return;
+      }
+
       this.isSubmitting = true;
       const email = emailInput.value;
       const password = passwordInput.value;
 
-      const { data } = await supabaseClient.auth.signInWithPassword({
-        email,
-        password,
-      });
+      this.validateField("email");
+      this.validateField("password");
 
-      if (data?.session) {
-        navigateTo("/elections");
-        // Alert the user that they have successfully logged in
+      if (Object.keys(this.formState.errors).length === 0) {
+        const { data, error } = await supabaseClient.auth.signInWithPassword({
+          email,
+          password,
+        });
+
+        if (error) {
+          // Show the error to the user and return
+          return;
+        }
+
+        if (data?.session) {
+          navigateTo("/elections");
+          // Alert the user that they have successfully logged in
+        }
       }
 
       this.isSubmitting = false;
