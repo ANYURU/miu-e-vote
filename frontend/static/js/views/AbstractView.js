@@ -116,6 +116,7 @@ export default class {
         ? "text-popup-600"
         : "text-grey-100"
     } hover:text-popup-600 hover:bg-popup-100 pl-3 pr-5 py-1 rounded-lg`;
+
     navLink.setAttribute("data-link", "");
 
     navLink.innerHTML = icon;

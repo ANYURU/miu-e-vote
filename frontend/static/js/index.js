@@ -15,18 +15,19 @@ const supabaseClient = createSupabaseClient(
   config.supabaseKey
 );
 
-// const supabaseClient = supabase.createClient(config.supabaseUrl, config.supabaseKey);
 const navigateTo = (url) => {
   history.pushState(null, null, url);
   router();
 };
 
 const checkAuth = async () => {
-  const response = await supabaseClient.auth.getSession();
-  return response;
+  const {
+    data: { session },
+  } = await supabaseClient.auth.getSession();
+  return session ?? null;
 };
 
-const router = async (supabaseClient) => {
+const router = async () => {
   const routes = [
     {
       path: "/",
@@ -99,6 +100,16 @@ const router = async (supabaseClient) => {
 
   let match = potentialMatches.find((potentialMatch) => potentialMatch.isMatch);
 
+  if (match && match?.route?.requiresAuth && !(await checkAuth())) {
+    navigateTo("/login");
+    return;
+  }
+
+  if (match && !match.route?.requiresAuth && (await checkAuth())) {
+    navigateTo("/elections");
+    return;
+  }
+
   if (!match) {
     match = {
       route: routes[routes.length - 1],
@@ -106,11 +117,8 @@ const router = async (supabaseClient) => {
     };
   }
 
-  console.log(match);
+  const view = new match.route.view();
 
-  const view = new match.route.view(supabaseClient);
-
-  // console.log(view.getHtml());
   function removeAllChildren(element) {
     while (element.firstChild) {
       element.removeChild(element.firstChild);
@@ -118,17 +126,9 @@ const router = async (supabaseClient) => {
   }
 
   const content = await view.renderContent();
-  console.log("Content: ", content);
   const root = document.querySelector("#app");
   removeAllChildren(root);
   root.appendChild(content);
-
-  // document.querySelector('#content').innerHTML = await view.renderContent();
-  // const content = await view.renderContent();
-  // const document.querySelect
-
-  const auth = await checkAuth();
-  console.log("Auth: ", auth);
 };
 
 window.addEventListener("popstate", router());
@@ -140,7 +140,7 @@ document.addEventListener("DOMContentLoaded", () => {
       navigateTo(e.target.href);
     }
   });
-  router(supabaseClient);
+  router();
 });
 
-export { navigateTo, supabaseClient };
+export { navigateTo, supabaseClient, checkAuth };

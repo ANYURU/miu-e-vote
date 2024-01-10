@@ -5,7 +5,110 @@ class LoginView extends AbstractView {
     super(params);
     this.setTitle("Login");
     this.supabaseClient = supabaseClient;
+    this.formState = {
+      email: "",
+      password: "",
+      errors: {},
+      touched: {},
+      isSubmitting: false,
+    };
+
+    this.validationSchema = {
+      email: [
+        (value) => (value.length === 0 ? "Email is required" : ""),
+        (value) =>
+          value.match(/^[a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,4}$/)
+            ? undefined
+            : "Invalid email address",
+      ],
+      password: [
+        (value) => (value.length === 0 ? "Password is required" : undefined),
+        (value) =>
+          value.length >= 8 ? "" : "Password must be at least 8 characters",
+      ],
+    };
+
+    this.handleInputChange = this.handleInputChange.bind(this);
+    this.handleInputBlur = this.handleInputBlur.bind(this);
   }
+
+  handleInputChange(event) {
+    const { name: fieldName, value } = event.target;
+    this.formState[fieldName] = value;
+    this.validateField(fieldName);
+  }
+
+  handleInputBlur(event) {
+    const { name: fieldName } = event.target;
+    this.formState.touched[fieldName] = true;
+    this.validateField(fieldName);
+  }
+
+  validateField(fieldName) {
+    if (this.formState.errors[fieldName]) {
+      delete this.formState.errors[fieldName];
+    }
+
+    for (const checkValidity of this.validationSchema[fieldName]) {
+      const errorMessage = checkValidity(this.formState[fieldName]);
+      if (errorMessage) {
+        this.formState.errors[fieldName] = errorMessage;
+        break;
+      }
+    }
+
+    this.updateAriaInvalid(fieldName);
+    this.showHideError(fieldName);
+  }
+
+  hasErrorAndTouched(fieldName) {
+    return (
+      (this.formState.errors[fieldName] && this.formState.touched[fieldName]) ||
+      false
+    );
+  }
+
+  updateAriaInvalid(fieldName) {
+    const hasErrorAndTouched = this.hasErrorAndTouched(fieldName);
+    const inputElement = document.getElementById(fieldName);
+    if (hasErrorAndTouched) {
+      inputElement.classList.add(
+        "focus:border-danger-500",
+        "border-danger-500"
+      );
+      inputElement.classList.remove(
+        "focus:border-success-500",
+        "border-black-200"
+      );
+      return;
+    }
+
+    if (!hasErrorAndTouched) {
+      inputElement.classList.add(
+        "focus:border-success-500",
+        "border-black-200"
+      );
+      inputElement.classList.remove(
+        "focus:border-danger-500",
+        "border-danger-500"
+      );
+    }
+  }
+
+  showHideError(fieldName) {
+    const errorElement = document.getElementById(`${fieldName}-error-element`);
+    const hasErrorAndTouched = this.hasErrorAndTouched(fieldName);
+
+    if (hasErrorAndTouched) {
+      errorElement.textContent = this.formState.errors[fieldName];
+      errorElement.classList.remove("invisible");
+      return;
+    }
+
+    errorElement.classList.add("invisible");
+    errorElement.textContent = "error";
+  }
+
   async renderContent() {
     const contentContainer = document.createElement("div");
     contentContainer.id = "content";
@@ -36,44 +139,31 @@ class LoginView extends AbstractView {
 
     const emailInput = document.createElement("input");
     emailInput.className =
-      "p-2 outline-none border border-black-200 focus:border-success-500 bg-grey-100 rounded-md font-light text-sm required w-full";
-    emailInput.type = "email";
+      "p-2 outline-none border border-black-200 focus:border-success-500 focus:invalid:border-danger-500 bg-grey-100 rounded-md font-light text-sm required w-full";
+    emailInput.type = "text";
     emailInput.name = "email";
     emailInput.id = "email";
     emailInput.placeholder = "Enter University Email";
-    emailInput.required = true;
+    // emailInput.ariaInvalid = false;
 
     const emailError = document.createElement("p");
     emailError.id = "email-error-element";
     emailError.className = "text-xs font-light text-danger-500 invisible";
     emailError.textContent = "error";
 
-    emailInput.addEventListener("blur", (event) => {
-      console.log("email: ", event.target.value);
-    });
-
-    emailInput.addEventListener("change", (event) => {
-      console.log("email: ", event.target.value);
-    });
+    emailInput.addEventListener("input", this.handleInputChange);
+    emailInput.addEventListener("blur", this.handleInputBlur);
 
     const passwordInput = document.createElement("input");
-    passwordInput.className =
-      "p-2 outline-none border border-black-200 focus:border-success-500 bg-grey-100 rounded-md font-light text-sm required w-full";
+    passwordInput.className = `p-2 outline-none border border-black-200 focus:border-success-500 invalid:border-red-500 bg-grey-100 rounded-md font-light text-sm required w-full`;
     passwordInput.type = "password";
     passwordInput.name = "password";
     passwordInput.id = "password";
-    passwordInput.minLength = 8;
     passwordInput.placeholder = "••••••••••••••";
-    passwordInput.required = true;
+    // passwordInput.ariaInvalid = false;
 
-    passwordInput.addEventListener("change", (event) => {
-      console.log("password: ", event.target.value);
-    });
-
-    passwordInput.addEventListener("blur", (event) => {
-      console.log("password: ", event.target.value);
-      passwordInput.checkValidity();
-    });
+    passwordInput.addEventListener("input", this.handleInputChange);
+    passwordInput.addEventListener("blur", this.handleInputBlur);
 
     const passwordError = document.createElement("p");
     passwordError.id = "password-error-element";
@@ -86,28 +176,25 @@ class LoginView extends AbstractView {
     loginButton.id = "login-cta";
     loginButton.type = "button";
     loginButton.textContent = "Login";
+    loginButton.disabled = this.formState.isSubmitting;
 
     loginButton.addEventListener("click", async (event) => {
       event.preventDefault();
+      this.isSubmitting = true;
       const email = emailInput.value;
       const password = passwordInput.value;
 
-      const { data, error } = await supabaseClient.auth.signInWithPassword({
+      const { data } = await supabaseClient.auth.signInWithPassword({
         email,
         password,
       });
-
-      if (error) {
-        /**
-         * Alert the user that there was an error logging in
-         */
-        console.log(error);
-      }
 
       if (data?.session) {
         navigateTo("/elections");
         // Alert the user that they have successfully logged in
       }
+
+      this.isSubmitting = false;
     });
 
     const linkContainer = document.createElement("div");
