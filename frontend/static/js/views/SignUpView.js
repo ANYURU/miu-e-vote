@@ -6,6 +6,106 @@ export default class SignUpView extends AbstractView {
     super();
     this.setTitle("Sign Up");
     this.supabaseClient = supabaseClient;
+    this.formState = {
+      email: "",
+      errors: {},
+      touched: {},
+      isSubmitting: false,
+    };
+
+    this.validationSchema = {
+      email: [
+        (value) => (value.length === 0 ? "Email is required" : ""),
+        (value) =>
+          value.match(/^[a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,4}$/)
+            ? undefined
+            : "Invalid email address",
+      ],
+    };
+
+    this.handleInputChange = this.handleInputChange.bind(this);
+    this.handleInputBlur = this.handleInputBlur.bind(this);
+  }
+
+  handleInputChange(event) {
+    const { name: fieldName, value } = event.target;
+    this.formState[fieldName] = value;
+    this.validateField(fieldName);
+  }
+
+  handleInputBlur(event) {
+    const { name: fieldName } = event.target;
+    this.formState.touched[fieldName] = true;
+    this.validateField(fieldName);
+  }
+
+  validateField(fieldName) {
+    if (this.formState.errors[fieldName]) {
+      delete this.formState.errors[fieldName];
+    }
+
+    for (const checkValidity of this.validationSchema[fieldName]) {
+      const errorMessage = checkValidity(this.formState[fieldName]);
+      if (errorMessage) {
+        this.formState.errors[fieldName] = errorMessage;
+        break;
+      }
+    }
+
+    this.updateAriaInvalid(fieldName);
+    this.showHideError(fieldName);
+  }
+
+  hasErrorAndTouched(fieldName) {
+    return (
+      (this.formState.errors[fieldName] && this.formState.touched[fieldName]) ||
+      false
+    );
+  }
+
+  updateAriaInvalid(fieldName) {
+    const hasErrorAndTouched = this.hasErrorAndTouched(fieldName);
+    const inputElement = document.getElementById(fieldName);
+
+    console.log("here", hasErrorAndTouched);
+    if (hasErrorAndTouched) {
+      inputElement.classList.add(
+        "focus:border-danger-500",
+        "border-danger-500"
+      );
+      inputElement.classList.remove(
+        "focus:border-success-500",
+        "border-black-200"
+      );
+
+      console.log("Input element classlist: ", inputElement.classList);
+      return;
+    }
+
+    if (!hasErrorAndTouched) {
+      inputElement.classList.add(
+        "focus:border-success-500",
+        "border-black-200"
+      );
+      inputElement.classList.remove(
+        "focus:border-danger-500",
+        "border-danger-500"
+      );
+    }
+  }
+
+  showHideError(fieldName) {
+    const errorElement = document.getElementById(`${fieldName}-error-element`);
+    const hasErrorAndTouched = this.hasErrorAndTouched(fieldName);
+
+    if (hasErrorAndTouched) {
+      errorElement.textContent = this.formState.errors[fieldName];
+      errorElement.classList.remove("invisible");
+      return;
+    }
+
+    errorElement.classList.add("invisible");
+    errorElement.textContent = "error";
   }
 
   async renderContent() {
@@ -38,25 +138,19 @@ export default class SignUpView extends AbstractView {
 
     const emailInput = document.createElement("input");
     emailInput.className =
-      "p-2 outline-none border border-black-200 focus:border-success-500 bg-grey-100 rounded-md font-light text-sm required w-full";
+      "p-2 outline-none border border-black-200 focus:border-success-500 bg-grey-100 rounded-md font-light text-sm w-full";
     emailInput.type = "email";
     emailInput.name = "email";
     emailInput.id = "email";
     emailInput.placeholder = "Enter University Email";
-    emailInput.required = true;
 
     const emailError = document.createElement("p");
     emailError.id = "email-error-element";
     emailError.className = "text-xs font-light text-danger-500 invisible";
     emailError.textContent = "error";
 
-    emailInput.addEventListener("change", (event) => {
-      console.log("email: ", event.target.value);
-    });
-
-    emailInput.addEventListener("blur", (event) => {
-      console.log("email: ", event.target.value);
-    });
+    emailInput.addEventListener("input", this.handleInputChange);
+    emailInput.addEventListener("blur", this.handleInputBlur);
 
     const sendOtpButton = document.createElement("button");
     sendOtpButton.className =
@@ -64,21 +158,40 @@ export default class SignUpView extends AbstractView {
     sendOtpButton.id = "send-otp-cta";
     sendOtpButton.type = "button";
     sendOtpButton.textContent = "Send OTP";
+    sendOtpButton.disabled = this.formState.isSubmitting;
 
     sendOtpButton.addEventListener("click", async (event) => {
       event.preventDefault();
+
+      if (this.isSubmitting) {
+        return;
+      }
+
+      this.isSubmitting = true;
       const email = emailInput.value;
-      localStorage.setItem("email", email);
 
-      const { data } = await this.supabaseClient.auth.signInWithOtp({
-        email: email,
-        options: {
-          shouldCreateUser: true,
-        },
-      });
+      this.validateField("email");
 
-      navigateTo("/verify-otp");
-      console.log("Data: ", data);
+      if (Object.keys(this.formState.errors).length == 0) {
+        const { data, error } = await this.supabaseClient.auth.signInWithOtp({
+          email: email,
+          options: {
+            shouldCreateUser: true,
+          },
+        });
+
+        if (error) {
+          // Show the user the error and redirect and return
+          return;
+        }
+
+        if (data) {
+          localStorage.setItem("email", email);
+          navigateTo("/verify-otp");
+        }
+      }
+
+      this.isSubmitting = false;
     });
 
     const linkContainer = document.createElement("div");
