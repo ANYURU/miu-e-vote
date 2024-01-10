@@ -125,6 +125,10 @@ export default class {
     textSpan.textContent = text;
 
     navLink.appendChild(textSpan);
+    navLink.addEventListener("click", (event) => {
+      event.preventDefault();
+      navigateTo(path);
+    });
     return navLink;
   }
 
