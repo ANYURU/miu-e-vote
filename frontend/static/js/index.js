@@ -82,8 +82,7 @@ const router = async () => {
     {
       path: "/set-password",
       view: SetPasswordView,
-      // requiresAuth: true,
-      requiresAuth: false
+      requiresAuth: true,
     },
     {
       path: "/404",
