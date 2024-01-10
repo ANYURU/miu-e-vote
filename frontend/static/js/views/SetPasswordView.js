@@ -6,8 +6,112 @@ class SetPasswordView extends AbstractView {
     super(params);
     this.setTitle("Set Password");
     this.supabaseClient = supabaseClient;
+    this.formState = {
+      password: "",
+      "password-confirm": "",
+      errors: {},
+      touched: {},
+      isSubmitting: false,
+    };
+
+    this.validationSchema = {
+      password: [
+        (value) => (value.length === 0 ? "Password is required" : ""),
+        (value) =>
+          value.length >= 8 ? "" : "Password must be at least 8 characters",
+      ],
+      "password-confirm": [
+        (value) => (value.length === 0 ? "Password Confirm is required" : ""),
+        (value) =>
+          this.formState.password && this.formState.password !== value
+            ? "Passwords do not match"
+            : "",
+      ],
+    };
+    this.handleInputChange = this.handleInputChange.bind(this);
+    this.handleInputBlur = this.handleInputBlur.bind(this);
   }
 
+  handleInputChange(event) {
+    const { name: fieldName, value } = event.target;
+
+    this.formState[fieldName] = value;
+
+    this.validateField("password");
+    this.validateField("password-confirm");
+    console.log("Form state: ", this.formState);
+  }
+
+  handleInputBlur(event) {
+    const { name: fieldName } = event.target;
+    this.formState.touched[fieldName] = true;
+    this.validateField(fieldName);
+  }
+
+  validateField(fieldName) {
+    if (this.formState.errors[fieldName]) {
+      delete this.formState.errors[fieldName];
+    }
+
+    for (const checkValidity of this.validationSchema[fieldName]) {
+      const errorMessage = checkValidity(this.formState[fieldName]);
+      if (errorMessage) {
+        this.formState.errors[fieldName] = errorMessage;
+        break;
+      }
+    }
+
+    this.updateAriaInvalid(fieldName);
+    this.showHideError(fieldName);
+  }
+
+  hasErrorAndTouched(fieldName) {
+    return (
+      (this.formState.errors[fieldName] && this.formState.touched[fieldName]) ||
+      false
+    );
+  }
+
+  updateAriaInvalid(fieldName) {
+    const hasErrorAndTouched = this.hasErrorAndTouched(fieldName);
+    const inputElement = document.getElementById(fieldName);
+
+    if (hasErrorAndTouched) {
+      inputElement.classList.add(
+        "focus:border-danger-500",
+        "border-danger-500"
+      );
+      inputElement.classList.remove(
+        "focus:border-success-500",
+        "border-black-200"
+      );
+    }
+
+    if (!hasErrorAndTouched) {
+      inputElement.classList.add(
+        "focus:border-success-500",
+        "border-black-200"
+      );
+      inputElement.classList.remove(
+        "focus:border-danger-500",
+        "border-danger-500"
+      );
+    }
+  }
+
+  showHideError(fieldName) {
+    const errorElement = document.getElementById(`${fieldName}-error-element`);
+    const hasErrorAndTouched = this.hasErrorAndTouched(fieldName);
+
+    if (hasErrorAndTouched) {
+      errorElement.textContent = this.formState.errors[fieldName];
+      errorElement.classList.remove("invisible");
+      return;
+    }
+
+    errorElement.classList.add("invisible");
+    errorElement.textContent = "error";
+  }
   async renderContent() {
     const contentContainer = document.createElement("div");
     contentContainer.id = "content";
@@ -45,14 +149,13 @@ class SetPasswordView extends AbstractView {
 
     const passwordError = this.createErrorElement("password");
     const passwordConfirmError = this.createErrorElement("password-confirm");
-
     const setPasswordButton = document.createElement("button");
     setPasswordButton.className =
       "w-full p-2 font-medium rounded-md text-grey-100 bg-success-500 hover:bg-popup-100 hover:text-popup-600 hover:cursor-pointer disabled:cursor-normal";
     setPasswordButton.id = "set-password-cta";
     setPasswordButton.type = "button";
     setPasswordButton.textContent = "Set Password";
-    // setPasswordButton.disabled = !this.checkPasswordValidity();
+    setPasswordButton.disabled = this.isSubmitting;
 
     setPasswordButton.addEventListener("click", async (event) => {
       event.preventDefault();
@@ -64,21 +167,25 @@ class SetPasswordView extends AbstractView {
         },
       } = await supabaseClient.auth.getUser();
 
-      console.log("User Id: ", id);
-
       try {
-        const { data: user } = await supabaseClient
+        const { data: user, error } = await supabaseClient
           .from("users")
           .select("isPasswordSet")
           .eq("user_id", id)
           .limit(1)
           .single();
 
+        if (error) throw error;
+
         if (!user) {
-          await supabaseClient.from("users").insert({
-            user_id: id,
-            isPasswordSet: true,
-          });
+          const { error } = await supabaseClient
+            .from("users")
+            .update({
+              isPasswordSet: true,
+            })
+            .eq("user_id", id);
+
+          if (error) throw error;
 
           await supabaseClient.auth.updateUser({
             password: password,
@@ -120,60 +227,15 @@ class SetPasswordView extends AbstractView {
     input.placeholder = placeholder;
     input.required = true;
 
-    input.addEventListener("input", (event) => {
-      this.clearErrorMessages(input, id);
-      console.log(`${id}: `, event.target.value);
-
-      if (id === "password-confirm") {
-        this.checkPasswordMatching();
-      }
-
-      if (id === "password") {
-        this.checkPasswordValidity();
-      }
-    });
-
-    input.addEventListener("blur", () => {
-      const passwordError = document.getElementById("password-error");
-      const passwordConfirmError = document.getElementById(
-        "password-confirm-error"
-      );
-
-      if (!input.value?.length > 0 && id === "password") {
-        passwordError.classList.remove("invisible");
-        passwordError.classList.add("visible");
-        passwordError.textContent = "Password is required";
-        input.classList.remove("focus:border-success-500");
-        input.classList.add("border-danger-500");
-      } else if (input.value && id === "password") {
-        passwordError.classList.add("invisible");
-        passwordError.classList.add("visible");
-        passwordError.textContent = "error";
-        input.classList.remove("border-danger-500");
-        input.classList.add("focus:border-success-500");
-      }
-
-      if (!input.value?.length > 0 && id === "password-confirm") {
-        passwordConfirmError.classList.remove("invisible");
-        passwordConfirmError.classList.add("visible");
-        passwordConfirmError.textContent = "Password comfirmation is required";
-        input.classList.remove("focus:border-success-500");
-        input.classList.add("border-danger-500");
-      } else if (input.value && id === "password-confirm") {
-        passwordConfirmError.classList.add("invisible");
-        passwordConfirmError.classList.add("visible");
-        passwordConfirmError.textContent = "error";
-        input.classList.remove("border-danger-500");
-        input.classList.add("focus:border-success-500");
-      }
-    });
+    input.addEventListener("input", (event) => this.handleInputChange(event));
+    input.addEventListener("blur", (event) => this.handleInputBlur(event));
 
     return input;
   }
 
   createErrorElement(id) {
     const errorElement = document.createElement("p");
-    errorElement.id = `${id}-error`;
+    errorElement.id = `${id}-error-element`;
     errorElement.className = "text-xs font-light text-danger-500 invisible";
     errorElement.textContent = "error";
     return errorElement;
@@ -187,72 +249,6 @@ class SetPasswordView extends AbstractView {
       errorElement.classList.add("invisible");
     }
     input.classList.remove("border-danger-500");
-  }
-
-  displayErrorMessages(input, id) {
-    const errorElement = document.getElementById(`${id}-error`);
-
-    if (errorElement) {
-      if (!input.checkValidity()) {
-        errorElement.textContent = input.validationMessage;
-        errorElement.classList.add("visible");
-        errorElement.classList.remove("invisible");
-        input.classList.add("border-danger-500");
-      }
-    }
-  }
-
-  checkPasswordValidity() {
-    const passwordInput = document.getElementById("password");
-    const passwordError = document.getElementById("password-error");
-
-    if (passwordInput && passwordError) {
-      if (passwordInput?.value && passwordInput?.value?.length < 7) {
-        passwordError.textContent =
-          "Password should be 8 or more characters long";
-        passwordError.classList.remove("invisible");
-        passwordError.classList.add("visible");
-        passwordInput.classList.add("border-danger-500");
-        passwordInput.classList.remove("focus:border-success-500");
-        return false;
-      } else {
-        passwordInput.classList.add("focus:border-success-500");
-        passwordInput.classList.remove("border-danger-500");
-        passwordInput.classList.remove("border-danger-500");
-        passwordError.classList.remove("visible");
-        passwordError.classList.add("invisible");
-        return true;
-      }
-    }
-  }
-  checkPasswordMatching() {
-    const passwordInput = document.getElementById("password");
-    const passwordConfirmInput = document.getElementById("password-confirm");
-    const passwordError = document.getElementById("password-error");
-    const passwordConfirmError = document.getElementById(
-      "password-confirm-error"
-    );
-
-    if (
-      passwordInput &&
-      passwordConfirmInput &&
-      passwordError &&
-      passwordConfirmError
-    ) {
-      if (passwordInput.value !== passwordConfirmInput.value) {
-        passwordConfirmError.textContent = "Passwords do not match";
-        passwordInput.classList.remove("focus:border-success-500");
-        passwordConfirmInput.classList.add("border-danger-500");
-        passwordConfirmError.classList.remove("invisible");
-        passwordConfirmError.classList.add("visible");
-      } else {
-        passwordInput.classList.remove("border-danger-500");
-        passwordInput.classList.add("focus:border-success-500");
-        passwordConfirmInput.classList.remove("border-danger-500");
-        passwordConfirmError.classList.remove("visible");
-        passwordConfirmError.classList.add("invisible");
-      }
-    }
   }
 }
 
