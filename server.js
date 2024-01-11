@@ -29,7 +29,7 @@ app.get("/*", (req, res) => {
         <script>
             const config = ${JSON.stringify(config)}
         </script>
-        <title>Single Page App</title>
+        <title>MIU e-vote</title>
         <link rel="stylesheet" href="/static/css/index.css">
         <link rel="shortcut icon" href="/static/assets/images/miu-logo.png" />
     </head>
