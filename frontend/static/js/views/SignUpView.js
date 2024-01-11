@@ -197,12 +197,22 @@ export default class SignUpView extends AbstractView {
     const linkContainer = document.createElement("div");
     linkContainer.className = "w-full flex flex-col items-center p-2";
 
-    const loginLink = document.createElement("span");
-    loginLink.className = "text-sm";
-    loginLink.innerHTML =
-      'Already have an account? <a class="text-success-500 hover:font-semibold" href="/" data-link>Login</a>';
+    const login = document.createElement("span");
+    login.className = "text-sm";
+    login.textContent = "Already have an account? ";
 
-    linkContainer.appendChild(loginLink);
+    const loginAnchor = document.createElement("a");
+    loginAnchor.className = "text-success-500 hover:font-semibold";
+    loginAnchor.href = "/login";
+    loginAnchor.textContent = "Login";
+    loginAnchor.addEventListener("click", (event) => {
+      event.preventDefault();
+      navigateTo(event.target.href);
+    });
+
+    login.appendChild(loginAnchor);
+    
+    linkContainer.appendChild(login);
 
     form.appendChild(emailInput);
     form.appendChild(emailError);
