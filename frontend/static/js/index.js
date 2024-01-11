@@ -8,12 +8,28 @@ import Notifications from "./views/NotificationsView.js";
 import VerifyOtpView from "./views/VerifyOtpView.js";
 import Results from "./views/ResultsView.js";
 import Profile from "./views/ProfileView.js";
+import CandidatesView from "./views/CandidatesView.js";
+import UnauthorizedView from "./views/UnauthorizedView.js";
 import createSupabaseClient from "./supabase/supabase.js";
 
 const supabaseClient = createSupabaseClient(
   config.supabaseUrl,
   config.supabaseKey
 );
+
+let userRole = null;
+
+supabaseClient.auth.onAuthStateChange((event, session) => {
+  if (session) {
+    getUserRole().then((role) => {
+      userRole = role;
+      router();
+    });
+  } else {
+    userRole = null;
+    router();
+  }
+});
 
 const navigateTo = (url) => {
   history.pushState(null, null, url);
@@ -25,6 +41,33 @@ const checkAuth = async () => {
     data: { session },
   } = await supabaseClient.auth.getSession();
   return session ?? null;
+};
+
+const getUserRole = async () => {
+  const {
+    data: {
+      user: { id: user_id },
+    },
+  } = await supabaseClient.auth.getUser();
+
+  const {
+    data: [
+      {
+        roles: { role_name },
+      },
+    ],
+  } = await supabaseClient
+    .from("user_roles")
+    .select(
+      `
+      roles (
+        role_name
+      )
+    `
+    )
+    .eq("user_id", user_id);
+
+  return role_name;
 };
 
 const router = async () => {
@@ -51,7 +94,7 @@ const router = async () => {
     },
     {
       path: "/candidates",
-      view: () => console.log("Viewing Settings"),
+      view: CandidatesView,
       requiresAuth: true,
     },
     {
@@ -82,6 +125,11 @@ const router = async () => {
     {
       path: "/set-password",
       view: SetPasswordView,
+      requiresAuth: true,
+    },
+    {
+      path: "/unauthorized",
+      view: UnauthorizedView,
       requiresAuth: true,
     },
     {
@@ -118,6 +166,7 @@ const router = async () => {
   }
 
   const view = new match.route.view();
+  view.setRole(userRole);
 
   function removeAllChildren(element) {
     while (element.firstChild) {
@@ -132,15 +181,5 @@ const router = async () => {
 };
 
 window.addEventListener("popstate", router());
-
-document.addEventListener("DOMContentLoaded", () => {
-  document.body.addEventListener("click", (e) => {
-    if (e.target.matches("[data-link]")) {
-      e.preventDefault();
-      navigateTo(e.target.href);
-    }
-  });
-  router();
-});
 
 export { navigateTo, supabaseClient, checkAuth };
