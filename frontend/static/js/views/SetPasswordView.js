@@ -180,27 +180,34 @@ class SetPasswordView extends AbstractView {
 
         if (error) throw error;
 
+        console.log("Is Password Set: ", is_password_set)
+
         if (!is_password_set) {
-          const { data, error } = await supabaseClient
-            .from("users")
-            .update({
-              is_password_set: true,
-            })
-            .eq("user_id", id);
 
-          if (error) throw error;
-
-          if (data) {
+          console.log( "Updating password")
+          const { error: passwordUpdateError } =
             await supabaseClient.auth.updateUser({
               password: password,
             });
 
-            navigateTo("/elections");
-          }
+          if (passwordUpdateError) throw passwordUpdateError;
+          
+          console.log("Updating password set status")
+          const { error: passwordUpdateStatusError } = await supabaseClient
+            .from("users")
+            .update({
+              is_password_set: true,
+            })
+            .eq("user_id", id)
+            .select();
+
+          if (passwordUpdateStatusError) throw passwordUpdateStatusError;
+          navigateTo("/elections");
         } else {
           // Notify the user that they are already registered.
         }
       } catch (error) {
+        console.log("Error: ", error);
         // Notify the user about the error
       }
     });
