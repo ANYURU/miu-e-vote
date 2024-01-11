@@ -82,18 +82,40 @@ class VerifyOtpView extends AbstractView {
     const resendOtpButton = document.createElement("button");
     resendOtpButton.className = "text-sm text-success-500 hover:font-semibold";
     resendOtpButton.textContent = "Resend OTP";
-    resendOtpButton.addEventListener("click", (event) => {
+    resendOtpButton.addEventListener("click", async (event) => {
       event.preventDefault();
       console.log("Trigger the resend of the otp");
+      const email = localStorage.getItem("email");
+      if (email) {
+        const { error } = await this.supabaseClient.auth.signInWithOtp({
+          email: email,
+          options: {
+            shouldCreateUser: true,
+          },
+        });
+
+        if (error) {
+          return;
+        }
+      }
     });
 
-    const changeEmailLink = document.createElement("span");
-    changeEmailLink.className = "text-sm";
-    changeEmailLink.innerHTML =
-      '<a class="text-success-500 hover:font-semibold" href="/sign-up" data-link>Change Email</a>';
+    const changeEmail = document.createElement("span");
+    changeEmail.className = "text-sm";
+
+    const changeEmailAnchor = document.createElement("a");
+    changeEmailAnchor.className = "text-success-500 hover:font-semibold";
+    changeEmailAnchor.href = "/sign-up";
+    changeEmailAnchor.textContent = "Change Email";
+    changeEmailAnchor.addEventListener("click", (event) => {
+      event.preventDefault();
+      navigateTo(event.target.href);
+    });
+
+    changeEmail.appendChild(changeEmailAnchor);
 
     linkContainer.appendChild(resendOtpButton);
-    linkContainer.appendChild(changeEmailLink);
+    linkContainer.appendChild(changeEmail);
 
     // Append the OTP input and Verify button to the form
     form.appendChild(otpInput);
