@@ -1,7 +1,8 @@
 import AbstractView from "./AbstractView.js";
 import { supabaseClient, navigateTo } from "../index.js";
 class LoginView extends AbstractView {
-  constructor(params) {
+  constructor(params, userRole) {
+    console.log("User Role: ", userRole);
     super(params);
     this.setTitle("Login");
     this.supabaseClient = supabaseClient;
@@ -214,18 +215,38 @@ class LoginView extends AbstractView {
     const linkContainer = document.createElement("div");
     linkContainer.className = "w-full flex flex-col items-center p-2";
 
-    const signUpLink = document.createElement("span");
-    signUpLink.className = "text-sm";
-    signUpLink.innerHTML =
-      'Are you a new student? <a class="text-success-500 hover:font-semibold" href="/sign-up" data-link>Sign Up</a>';
+    const signUp = document.createElement("span");
+    signUp.className = "text-sm";
+    signUp.textContent = "Are you a new student? ";
 
-    const forgotPasswordLink = document.createElement("span");
-    forgotPasswordLink.className = "text-sm";
-    forgotPasswordLink.innerHTML =
-      'Forgot Password? <a class="text-success-500 hover:font-semibold" href="/forgot-password" data-link>Reset Password</a>';
+    const signUpAnchor = document.createElement("a");
+    signUpAnchor.className = "text-success-500 hover:font-semibold";
+    signUpAnchor.href = "/sign-up";
+    signUpAnchor.textContent = "Sign Up";
+    signUpAnchor.addEventListener("click", (event) => {
+      event.preventDefault();
+      navigateTo(event.target.href);
+    });
 
-    linkContainer.appendChild(signUpLink);
-    linkContainer.appendChild(forgotPasswordLink);
+    signUp.appendChild(signUpAnchor);
+
+    const forgotPassword = document.createElement("span");
+    forgotPassword.className = "text-sm";
+    forgotPassword.textContent = "Forgot Password? ";
+
+    const forgotPasswordAnchor = document.createElement("a");
+    forgotPasswordAnchor.className = "text-success-500 hover:font-semibold";
+    forgotPasswordAnchor.href = "/forgot-password";
+    forgotPasswordAnchor.textContent = "Reset Password";
+    forgotPasswordAnchor.addEventListener("click", (event) => {
+      event.preventDefault();
+      navigateTo(event.target.href);
+    });
+
+    forgotPassword.appendChild(forgotPasswordAnchor);
+
+    linkContainer.appendChild(signUp);
+    linkContainer.appendChild(forgotPassword);
 
     form.appendChild(emailInput);
     form.appendChild(emailError);
