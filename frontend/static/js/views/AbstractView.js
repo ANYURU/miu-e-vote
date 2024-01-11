@@ -3,6 +3,7 @@ export default class {
   constructor(params) {
     this.params = params;
     this.signingOut = false;
+    this.role = null;
   }
 
   menuItems = {
@@ -20,8 +21,8 @@ export default class {
         path: "/candidates",
         text: "candidates",
         icon: `
-          <svg class="w-7 h-7" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10"></path>
+          <svg class="w-7 h-7" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+            <path fill="currentColor" d="m80.161 60.441l-15.66-7.47l-6.622-3.159c2.892-1.822 5.241-4.634 6.778-8.021a21.743 21.743 0 0 0 1.945-8.99c0-1.827-.29-3.562-.694-5.236c-1.97-8.112-8.305-14.088-15.91-14.088c-7.461 0-13.7 5.763-15.792 13.644c-.483 1.808-.815 3.688-.815 5.68c0 3.459.808 6.684 2.181 9.489c1.587 3.254 3.94 5.937 6.804 7.662l-6.342 2.953l-16.168 7.53c-1.404.658-2.327 2.242-2.327 4.011v17.765c0 2.381 1.659 4.311 3.707 4.311h24.013V72.92a.78.78 0 0 1 .119-.396l-.01-.006l3.933-6.812l.01.006c.14-.24.389-.41.687-.41c.298 0 .547.169.687.41l.004-.003l.036.063c.005.01.012.018.016.028l3.881 6.721l-.005.003a.783.783 0 0 1 .119.397v13.602h24.013c2.048 0 3.708-1.93 3.708-4.311V64.446c.003-1.763-.905-3.332-2.296-4.005zM54.62 55.886l.01.006l-3.934 6.812l-.01-.006a.796.796 0 0 1-.687.409a.796.796 0 0 1-.687-.409l-.005.003l-.04-.069c-.003-.007-.009-.013-.012-.02l-3.881-6.723l.004-.003a.783.783 0 0 1-.119-.397c0-.445.361-.806.806-.806h7.866c.445 0 .806.361.806.806a.762.762 0 0 1-.117.397z"></path>
           </svg>
         `,
       },
@@ -95,6 +96,10 @@ export default class {
     ],
   };
 
+  setRole(role) {
+    this.role = role;
+  }
+
   setTitle(title) {
     document.title = title;
   }
@@ -104,7 +109,40 @@ export default class {
   }
 
   async getUserRole() {
-    const role = "student";
+    const {
+      data: {
+        user: { id: user_id },
+      },
+    } = await supabaseClient.auth.getUser();
+
+    const {
+      data: [
+        {
+          roles: { role_name },
+        },
+      ],
+    } = await supabaseClient
+      .from("user_roles")
+      .select(
+        `
+        roles (
+          role_name
+        )
+      `
+      )
+      .eq("user_id", user_id);
+
+    return role_name;
+  }
+
+  async fetchUserRole() {
+    let role = sessionStorage.getItem("userRole");
+
+    if (!role) {
+      role = await this.getUserRole();
+      sessionStorage.setItem("userRole", role);
+    }
+
     return role;
   }
 
@@ -227,7 +265,7 @@ export default class {
     sideNav.className = "flex flex-col w-fit h-full justify-between py-8";
 
     // Get the role
-    const role = await this.getUserRole();
+    const role = await this.role;
     const roleNavMenuItems = this.getMenuItems(role);
 
     const roleNavSection = document.createElement("section");
@@ -253,7 +291,10 @@ export default class {
       const {
         data: { session },
       } = await supabaseClient.auth.getSession();
-      if (!session) navigateTo("/login");
+      if (!session) {
+        sessionStorage.removeItem("user_role");
+        navigateTo("/login");
+      }
     });
 
     logoutButton.innerHTML = `
