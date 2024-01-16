@@ -1,8 +1,7 @@
 import AbstractView from "./AbstractView.js";
 import { supabaseClient, navigateTo } from "../index.js";
 class LoginView extends AbstractView {
-  constructor(params, userRole) {
-    console.log("User Role: ", userRole);
+  constructor(params) {
     super(params);
     this.setTitle("Login");
     this.supabaseClient = supabaseClient;
