@@ -382,7 +382,7 @@ export default class extends AbstractView {
 
     const setElectionButton = document.createElement("button");
     setElectionButton.className =
-      "w-full p-2 font-medium rounded-md text-grey-100 bg-success-500 hover:bg-popup-100 hover:text-popup-600 hover:cursor-pointer disabled:cursor-normal";
+      "w-full md:w-96 p-2 font-medium rounded-md text-grey-100 bg-success-500 hover:bg-popup-100 hover:text-popup-600 hover:cursor-pointer disabled:cursor-normal";
     setElectionButton.id = "set-election-cta";
     setElectionButton.type = "button";
     setElectionButton.textContent = "Set Election";
