@@ -4,7 +4,6 @@ const path = require("path");
 
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_KEY;
-const port = process.env.PORT;
 
 const config = {
   supabaseUrl,
@@ -42,6 +41,6 @@ app.get("/*", (req, res) => {
     `);
 });
 
-app.listen(port, "0.0.0.0", () => {
+app.listen(5000, "0.0.0.0", () => {
   console.log("Server is running...");
 });
