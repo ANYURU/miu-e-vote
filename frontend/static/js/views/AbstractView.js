@@ -318,6 +318,145 @@ export default class {
     return svg;
   }
 
+  createSelectInput(options, placeholder) {
+    const container = document.createElement("div");
+    container.className = "relative w-full md:w-96";
+
+    const inputContainer = document.createElement("div");
+    inputContainer.className = "relative flex items-center";
+
+    const selectedOptions = new Set();
+
+    const input = document.createElement("div");
+    input.className =
+      "p-2 pr-6 outline-none flex flex-wrap gap-1 overflow-y-auto border border-black-200 focus:border-success-500 bg-grey-200 rounded-md font-light text-sm w-full md:w-96 min-h-9 h-fit relative";
+    input.tabIndex = 0;
+    input.textContent = placeholder;
+    input.setAttribute("role", "listbox");
+    input.setAttribute("aria-multiselectable", "true");
+    input.setAttribute("aria-expanded", "false");
+    input.setAttribute("aria-haspopup", "listbox");
+
+    inputContainer.appendChild(input);
+
+    const dropdown = document.createElement("div");
+    dropdown.className =
+      "absolute top-full mt-1 left-0 bg-white border border-black-200 rounded-md shadow-md max-h-36 overflow-y-auto overscroll-contain hidden w-full md:w-96 z-20";
+
+    inputContainer.appendChild(dropdown);
+
+    const clearAllButton = document.createElement("button");
+    clearAllButton.type = "button";
+    clearAllButton.appendChild(this.generateCloseIcon());
+    clearAllButton.className =
+      "flex items-center h-full px-1 text-sm text-gray-500 cursor-pointer border-l border-black-200 bg-transparent focus:outline-none absolute top-0 right-0";
+
+    clearAllButton.addEventListener("click", (event) => {
+      event.preventDefault();
+      selectedOptions.clear();
+      updateSelectedOptions();
+      updateDropdownOptions();
+      input.textContent = placeholder;
+    });
+
+    inputContainer.appendChild(clearAllButton);
+
+    container.appendChild(inputContainer);
+
+    const updateDropdownOptions = () => {
+      const allOptionsSelected = options.every((option) =>
+        selectedOptions.has(option.value)
+      );
+
+      removeAllChildren(dropdown);
+
+      if (allOptionsSelected || options.length === 0) {
+        const placeholderOption = document.createElement("div");
+        placeholderOption.className =
+          "py-1 px-2 cursor-pointer text-grey-900 font-light text-sm rounded m-2 border border-dashed";
+        placeholderOption.textContent = allOptionsSelected
+          ? "All Options Selected"
+          : "No options available";
+        dropdown.appendChild(placeholderOption);
+      } else {
+        options.forEach((option) => {
+          if (!selectedOptions.has(option.value)) {
+            const optionElement = document.createElement("div");
+            optionElement.className =
+              "p-2 cursor-pointer hover:bg-gray-100 text-sm";
+            optionElement.textContent = option.label;
+
+            optionElement.addEventListener("click", () => {
+              selectedOptions.add(option.value);
+              updateSelectedOptions();
+              updateDropdownOptions();
+            });
+
+            dropdown.appendChild(optionElement);
+          }
+        });
+      }
+    };
+
+    input.addEventListener("click", () => {
+      dropdown.classList.remove("hidden");
+      updateDropdownOptions();
+    });
+
+    document.addEventListener("click", (event) => {
+      if (!container.contains(event.target)) {
+        dropdown.classList.add("hidden");
+      }
+    });
+
+    const updateSelectedOptions = () => {
+      removeAllChildren(input);
+
+      if (selectedOptions.size === 0) {
+        input.textContent = placeholder;
+      } else {
+        selectedOptions.forEach((value) => {
+          const selectedOption = document.createElement("span");
+          selectedOption.className =
+            "flex items-center h-fit selected-option px-2 cursor-pointer rounded bg-grey-600 text-grey-900 rounded-sm";
+          selectedOption.textContent = options.find(
+            (opt) => opt.value === value
+          ).label;
+
+          const clearButton = document.createElement("button");
+          clearButton.appendChild(this.generateCloseIcon());
+          clearButton.className =
+            "ml-2 p-1 text-sm text-gray-500 cursor-pointer border-none bg-transparent focus:outline-none";
+
+          clearButton.addEventListener("click", () => {
+            selectedOptions.delete(value);
+            updateSelectedOptions();
+            updateDropdownOptions();
+          });
+
+          selectedOption.appendChild(clearButton);
+          input.appendChild(selectedOption);
+        });
+      }
+    };
+
+    options.forEach((option) => {
+      const optionElement = document.createElement("div");
+      optionElement.className = "p-2 cursor-pointer hover:bg-gray-100";
+      optionElement.textContent = option.label;
+
+      optionElement.addEventListener("click", () => {
+        selectedOptions.add(option.value);
+        updateSelectedOptions();
+        updateDropdownOptions();
+      });
+
+      dropdown.appendChild(optionElement);
+    });
+
+    return container;
+  }
+
   renderPageLoader() {
     const loader = this.renderLoader();
     const pageLoader = document.createElement("div");
@@ -473,7 +612,8 @@ export default class {
     sideBar.appendChild(sideNav);
 
     const viewArea = document.createElement("main");
-    viewArea.className = "flex flex-col h-full w-full p-5 md:p-10";
+    viewArea.className =
+      "flex flex-col h-full w-full overflow-y-auto overscroll-contain p-5 md:p-10";
     viewArea.id = "content-area";
 
     contentContainer.appendChild(sideBar);
