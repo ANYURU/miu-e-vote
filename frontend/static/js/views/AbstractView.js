@@ -1,10 +1,11 @@
-import { navigateTo, supabaseClient } from "../index.js";
+import { navigateTo, supabaseClient, removeAllChildren } from "../index.js";
 export default class {
   constructor(params) {
     this.params = params;
     this.signingOut = false;
     this.role = null;
     this.profile = null;
+    this.toastTimeout = undefined;
   }
 
   menuItems = {
@@ -318,7 +319,14 @@ export default class {
     return svg;
   }
 
-  createSelectInput(options, placeholder) {
+  createMultiSelectInput(
+    options,
+    placeholder,
+    id,
+    updateFormStateCallback,
+    validateFieldCallback,
+    setFieldTouchedCallback
+  ) {
     const container = document.createElement("div");
     container.className = "relative w-full md:w-96";
 
@@ -336,6 +344,12 @@ export default class {
     input.setAttribute("aria-multiselectable", "true");
     input.setAttribute("aria-expanded", "false");
     input.setAttribute("aria-haspopup", "listbox");
+    input.setAttribute("id", id);
+    input.addEventListener("blur", () => {
+      updateFormStateCallback;
+      setFieldTouchedCallback(id);
+      validateFieldCallback(id);
+    });
 
     inputContainer.appendChild(input);
 
@@ -414,6 +428,8 @@ export default class {
 
       if (selectedOptions.size === 0) {
         input.textContent = placeholder;
+        updateFormStateCallback(id, []);
+        validateFieldCallback(id);
       } else {
         selectedOptions.forEach((value) => {
           const selectedOption = document.createElement("span");
@@ -436,6 +452,9 @@ export default class {
 
           selectedOption.appendChild(clearButton);
           input.appendChild(selectedOption);
+          console.log(selectedOptions);
+          updateFormStateCallback(id, Array.from(selectedOptions));
+          validateFieldCallback(id);
         });
       }
     };
@@ -457,6 +476,175 @@ export default class {
     return container;
   }
 
+  generateSuccessIcon() {
+    const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    svg.setAttribute("xmlns", "http://www.w3.org/2000/svg");
+    svg.setAttribute("fill-rule", "evenodd");
+    svg.setAttribute("clip-rule", "evenodd");
+    svg.setAttribute("image-rendering", "optimizeQuality");
+    svg.setAttribute("shape-rendering", "geometricPrecision");
+    svg.setAttribute("text-rendering", "geometricPrecision");
+    svg.setAttribute("viewBox", "0 0 6.827 6.827");
+    svg.setAttribute("class", "w-6 h-6 fill-popup-500");
+
+    const circle = document.createElementNS(
+      "http://www.w3.org/2000/svg",
+      "circle"
+    );
+    circle.setAttribute("cx", "3.413");
+    circle.setAttribute("cy", "3.413");
+    circle.setAttribute("r", "3.413");
+    circle.setAttribute("class", "svgShape");
+
+    const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+    path.setAttribute("fill", "#ffffff");
+    path.setAttribute(
+      "d",
+      "m2.57 3.907 2.267-1.8a.356.356 0 0 1 .574.319.354.354 0 0 1-.132.238L2.704 4.708l-.025.02a.356.356 0 0 1-.032.02l-.014.009a.355.355 0 0 1-.471-.139l-.04-.067h.001l-.662-1.149a.354.354 0 1 1 .614-.353l.496.858z"
+    );
+    path.setAttribute("class", "svgShape");
+
+    svg.appendChild(circle);
+    svg.appendChild(path);
+
+    return svg;
+  }
+
+  generateInfoIcon() {
+    const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    svg.setAttribute("xmlns", "http://www.w3.org/2000/svg");
+    svg.setAttribute("viewBox", "0 0 48 48");
+    svg.setAttribute("class", "w-6 h-6 fill-sky-400");
+
+    const path1 = document.createElementNS(
+      "http://www.w3.org/2000/svg",
+      "path"
+    );
+    path1.setAttribute(
+      "d",
+      "M44 24c0 11.045-8.955 20-20 20S4 35.045 4 24 12.955 4 24 4s20 8.955 20 20z"
+    );
+    path1.setAttribute("class", "svgShape");
+
+    const path2 = document.createElementNS(
+      "http://www.w3.org/2000/svg",
+      "path"
+    );
+    path2.setAttribute("fill", "#ffffff");
+    path2.setAttribute(
+      "d",
+      "M22 22h4v11h-4V22zM26.5 16.5c0 1.379-1.121 2.5-2.5 2.5s-2.5-1.121-2.5-2.5S22.621 14 24 14s2.5 1.121 2.5 2.5z"
+    );
+    path2.setAttribute("class", "colorFFF svgShape");
+
+    svg.appendChild(path1);
+    svg.appendChild(path2);
+
+    return svg;
+  }
+
+  generateErrorIcon() {
+    const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    svg.setAttribute("xmlns", "http://www.w3.org/2000/svg");
+    svg.setAttribute("viewBox", "0 0 48 48");
+    svg.setAttribute("class", "w-6 h-6 fill-danger-500");
+
+    const path1 = document.createElementNS(
+      "http://www.w3.org/2000/svg",
+      "path"
+    );
+    path1.setAttribute(
+      "d",
+      "M44 24c0 11.045-8.955 20-20 20S4 35.045 4 24 12.955 4 24 4s20 8.955 20 20z"
+    );
+    path1.setAttribute("class", "svgShape");
+
+    const path2 = document.createElementNS(
+      "http://www.w3.org/2000/svg",
+      "path"
+    );
+    path2.setAttribute("fill", "#ffffff");
+    path2.setAttribute(
+      "d",
+      "M22 22h4v11h-4V22zM26.5 16.5c0 1.379-1.121 2.5-2.5 2.5s-2.5-1.121-2.5-2.5S22.621 14 24 14s2.5 1.121 2.5 2.5z"
+    );
+    path2.setAttribute("class", "colorFFF svgShape");
+
+    svg.appendChild(path1);
+    svg.appendChild(path2);
+
+    return svg;
+  }
+
+  createToast(message, icon = null) {
+    const toast = document.createElement("div");
+    toast.className =
+      "flex gap-x-2 items-center w-full max-w-sm p-2 text-gray-500 bg-white rounded-lg shadow dark:text-gray-400 dark:bg-gray-800";
+
+    const iconContainer = document.createElement("div");
+    iconContainer.className =
+      "inline-flex items-center justify-center flex-shrink-0 w-fit h-fit text-blue-500 rounded-lg dark:bg-blue-800 dark:text-blue-200";
+
+    const iconSpan = document.createElement("span");
+    iconSpan.className = "sr-only";
+    iconSpan.textContent = "Icon";
+
+    if (icon) iconContainer.appendChild(icon);
+    iconContainer.appendChild(iconSpan);
+
+    const messageDiv = document.createElement("div");
+    messageDiv.className = "ms-3 text-sm font-normal text-black-500 font-light";
+    messageDiv.textContent = message;
+
+    const closeButton = document.createElement("button");
+    closeButton.type = "button";
+    closeButton.className =
+      "ms-auto mx-1.5 -my-1.5 bg-white text-gray-400 hover:text-gray-900 rounded-lg focus:ring-2 focus:ring-gray-300 p-1 hover:bg-grey-300 inline-flex items-center justify-center dark:text-gray-500 dark:hover:text-white dark:bg-grey-800 dark:hover:bg-grey-700";
+    closeButton.appendChild(this.generateCloseIcon());
+    closeButton.addEventListener("click", (event) => {
+      event.preventDefault();
+      const toastContainer = document.querySelector("#toast-container");
+      removeAllChildren(toastContainer)
+      toastContainer.classList.remove("top-5", "right-5");
+      if (typeof this.toastTimeout === "number") {
+        clearTimeout(this.toastTimeout);
+      }
+    });
+
+    toast.appendChild(iconContainer);
+    toast.appendChild(messageDiv);
+    toast.appendChild(closeButton);
+
+    return toast;
+  }
+
+  showToast(message, type = "info") {
+    const toastContainer = document.querySelector("#toast-container");
+    toastContainer.classList.add("top-5", "right-5");
+    let icon = null;
+    if (type === "success") {
+      icon = this.generateSuccessIcon();
+    }
+
+    if (type === "info") {
+      icon = this.generateInfoIcon();
+    }
+
+    if (type === "error") {
+      icon = this.generateErrorIcon();
+    }
+
+    const toastElement = this.createToast(message, icon);
+    toastContainer.appendChild(toastElement);
+
+    this.toastTimeout = setTimeout(() => {
+      toastContainer.removeChild(toastElement);
+      toastContainer.classList.remove("top-5", "right-5");
+    }, 5000);
+
+    console.log("Timeout Id: ", this.toastTimeout);
+  }
+
   renderPageLoader() {
     const loader = this.renderLoader();
     const pageLoader = document.createElement("div");
@@ -470,6 +658,12 @@ export default class {
     contentContainer.id = "content";
     contentContainer.className =
       "flex flex-col md:flex-row h-screen w-screen relative overflow-hidden bg-grey-400 overflow-hidden overscroll-contain";
+
+    // toast container
+    const toastContainer = document.createElement("div");
+    toastContainer.className = "fixed z-50";
+    toastContainer.id = "toast-container";
+    contentContainer.appendChild(toastContainer);
 
     const sideBar = document.createElement("aside");
     sideBar.className =
