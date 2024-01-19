@@ -1,9 +1,11 @@
-import { navigateTo, supabaseClient } from "../index.js";
+import { navigateTo, supabaseClient, removeAllChildren } from "../index.js";
 export default class {
   constructor(params) {
     this.params = params;
     this.signingOut = false;
     this.role = null;
+    this.profile = null;
+    this.toastTimeout = undefined;
   }
 
   menuItems = {
@@ -108,42 +110,8 @@ export default class {
     return this.menuItems[role] || this.menuItems["student"];
   }
 
-  async getUserRole() {
-    const {
-      data: {
-        user: { id: user_id },
-      },
-    } = await supabaseClient.auth.getUser();
-
-    const {
-      data: [
-        {
-          roles: { role_name },
-        },
-      ],
-    } = await supabaseClient
-      .from("user_roles")
-      .select(
-        `
-        roles (
-          role_name
-        )
-      `
-      )
-      .eq("user_id", user_id);
-
-    return role_name;
-  }
-
-  async fetchUserRole() {
-    let role = sessionStorage.getItem("userRole");
-
-    if (!role) {
-      role = await this.getUserRole();
-      sessionStorage.setItem("userRole", role);
-    }
-
-    return role;
+  setProfile(profile) {
+    this.profile = profile;
   }
 
   generateNavLink({ path, text, icon }) {
@@ -170,23 +138,532 @@ export default class {
     return navLink;
   }
 
+  generateCloseIcon(size = 4, color = "currentColor") {
+    const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    svg.setAttribute("xmlns", "http://www.w3.org/2000/svg");
+    svg.setAttribute("viewBox", "0 0 24 24");
+    svg.setAttribute("class", "h-" + size + " w-" + size);
+
+    const g = document.createElementNS("http://www.w3.org/2000/svg", "g");
+    g.setAttribute("data-name", "Layer 2");
+
+    const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+    path.setAttribute(
+      "d",
+      "m13.41 12 4.3-4.29a1 1 0 1 0-1.42-1.42L12 10.59l-4.29-4.3a1 1 0 0 0-1.42 1.42l4.3 4.29-4.3 4.29a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l4.29-4.3 4.29 4.3a1 1 0 0 0 1.42 0 1 1 0 0 0 0-1.42z"
+    );
+    path.setAttribute("data-name", "close");
+
+    path.style.fill = color;
+
+    g.appendChild(path);
+    svg.appendChild(g);
+
+    return svg;
+  }
   renderLoader() {
-    return `
-      <div role="status" class="absolute h-fit w-fit">
-        <svg aria-hidden="true" class="w-8 h-8 text-grey-100 animate-spin dark:text-gray-600 fill-success-400" viewBox="0 0 100 101" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M100 50.5908C100 78.2051 77.6142 100.591 50 100.591C22.3858 100.591 0 78.2051 0 50.5908C0 22.9766 22.3858 0.59082 50 0.59082C77.6142 0.59082 100 22.9766 100 50.5908ZM9.08144 50.5908C9.08144 73.1895 27.4013 91.5094 50 91.5094C72.5987 91.5094 90.9186 73.1895 90.9186 50.5908C90.9186 27.9921 72.5987 9.67226 50 9.67226C27.4013 9.67226 9.08144 27.9921 9.08144 50.5908Z" fill="currentColor"/>
-            <path d="M93.9676 39.0409C96.393 38.4038 97.8624 35.9116 97.0079 33.5539C95.2932 28.8227 92.871 24.3692 89.8167 20.348C85.8452 15.1192 80.8826 10.7238 75.2124 7.41289C69.5422 4.10194 63.2754 1.94025 56.7698 1.05124C51.7666 0.367541 46.6976 0.446843 41.7345 1.27873C39.2613 1.69328 37.813 4.19778 38.4501 6.62326C39.0873 9.04874 41.5694 10.4717 44.0505 10.1071C47.8511 9.54855 51.7191 9.52689 55.5402 10.0491C60.8642 10.7766 65.9928 12.5457 70.6331 15.2552C75.2735 17.9648 79.3347 21.5619 82.5849 25.841C84.9175 28.9121 86.7997 32.2913 88.1811 35.8758C89.083 38.2158 91.5421 39.6781 93.9676 39.0409Z" fill="currentFill"/>
-        </svg>
-        <span class="sr-only text-xs">Loading...</span>
-      </div>
-    `;
+    const loader = document.createElement("div");
+    loader.setAttribute("role", "status");
+    loader.className = "h-fit w-fit";
+
+    const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    svg.setAttribute("aria-hidden", "true");
+    svg.setAttribute(
+      "class",
+      "w-8 h-8 text-grey-100 animate-spin dark:text-gray-600 fill-success-400"
+    );
+    svg.setAttribute("viewBox", "0 0 100 101");
+    svg.setAttribute("fill", "none");
+
+    const path1 = document.createElementNS(
+      "http://www.w3.org/2000/svg",
+      "path"
+    );
+    path1.setAttribute(
+      "d",
+      "M100 50.5908C100 78.2051 77.6142 100.591 50 100.591C22.3858 100.591 0 78.2051 0 50.5908C0 22.9766 22.3858 0.59082 50 0.59082C77.6142 0.59082 100 22.9766 100 50.5908ZM9.08144 50.5908C9.08144 73.1895 27.4013 91.5094 50 91.5094C72.5987 91.5094 90.9186 73.1895 90.9186 50.5908C90.9186 27.9921 72.5987 9.67226 50 9.67226C27.4013 9.67226 9.08144 27.9921 9.08144 50.5908Z"
+    );
+    path1.setAttribute("fill", "currentColor");
+
+    // Create the second path inside the SVG
+    const path2 = document.createElementNS(
+      "http://www.w3.org/2000/svg",
+      "path"
+    );
+    path2.setAttribute(
+      "d",
+      "M93.9676 39.0409C96.393 38.4038 97.8624 35.9116 97.0079 33.5539C95.2932 28.8227 92.871 24.3692 89.8167 20.348C85.8452 15.1192 80.8826 10.7238 75.2124 7.41289C69.5422 4.10194 63.2754 1.94025 56.7698 1.05124C51.7666 0.367541 46.6976 0.446843 41.7345 1.27873C39.2613 1.69328 37.813 4.19778 38.4501 6.62326C39.0873 9.04874 41.5694 10.4717 44.0505 10.1071C47.8511 9.54855 51.7191 9.52689 55.5402 10.0491C60.8642 10.7766 65.9928 12.5457 70.6331 15.2552C75.2735 17.9648 79.3347 21.5619 82.5849 25.841C84.9175 28.9121 86.7997 32.2913 88.1811 35.8758C89.083 38.2158 91.5421 39.6781 93.9676 39.0409Z"
+    );
+    path2.setAttribute("fill", "currentFill");
+
+    // Append the paths to the SVG
+    svg.appendChild(path1);
+    svg.appendChild(path2);
+
+    // Create the span element
+    const span = document.createElement("span");
+    span.classList.add("sr-only", "text-xs");
+    span.textContent = "Loading...";
+
+    loader.appendChild(svg);
+    loader.appendChild(span);
+
+    return loader;
   }
 
+  getInitials(username) {
+    if (username) {
+      const initials = username.split(" ").map((name) => name[0]);
+      return initials?.length > 1 ? initials[0] + initials[1] : initials[0];
+    }
+
+    return null;
+  }
+
+  createDeleteIcon() {
+    const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    svg.setAttribute("xmlns", "http://www.w3.org/2000/svg");
+    svg.setAttribute("id", "Layer_1");
+    svg.setAttribute("x", "0");
+    svg.setAttribute("y", "0");
+    svg.setAttribute("version", "1.1");
+    svg.setAttribute("viewBox", "0 0 29 29");
+    svg.setAttribute("xml:space", "preserve");
+    svg.setAttribute(
+      "class",
+      "w-4 h-4 fill-black-300 group-hover:fill-danger-600"
+    );
+
+    const path1 = document.createElementNS(
+      "http://www.w3.org/2000/svg",
+      "path"
+    );
+    path1.setAttribute("d", "M10 3v3h9V3a1 1 0 0 0-1-1h-7a1 1 0 0 0-1 1");
+    path1.setAttribute("class", "svgShape");
+
+    const path2 = document.createElementNS(
+      "http://www.w3.org/2000/svg",
+      "path"
+    );
+    path2.setAttribute(
+      "d",
+      "M4 5v1h21V5a1 1 0 0 0-1-1H5a1 1 0 0 0-1 1zM6 8l1.812 17.209A2 2 0 0 0 9.801 27H19.2a2 2 0 0 0 1.989-1.791L23 8H6z"
+    );
+    path2.setAttribute("class", "svgShape");
+
+    const path3 = document.createElementNS(
+      "http://www.w3.org/2000/svg",
+      "path"
+    );
+    path3.setAttribute(
+      "d",
+      "M10.577 24.997a.999.999 0 0 1-1.074-.92l-1-13a1 1 0 0 1 .92-1.074.989.989 0 0 1 1.074.92l1 13a1 1 0 0 1-.92 1.074z"
+    );
+    path3.setAttribute("class", "svgShape");
+
+    const path4 = document.createElementNS(
+      "http://www.w3.org/2000/svg",
+      "path"
+    );
+    path4.setAttribute("d", "M15.5 24a1 1 0 0 1-2 0V11a1 1 0 0 1 2 0v13z");
+    path4.setAttribute("class", "svgShape");
+
+    const path5 = document.createElementNS(
+      "http://www.w3.org/2000/svg",
+      "path"
+    );
+    path5.setAttribute(
+      "d",
+      "M18.497 24.077a.999.999 0 1 1-1.994-.154l1-13a.985.985 0 0 1 1.074-.92 1 1 0 0 1 .92 1.074l-1 13z"
+    );
+    path5.setAttribute("class", "svgShape");
+
+    svg.appendChild(path1);
+    svg.appendChild(path2);
+    svg.appendChild(path3);
+    svg.appendChild(path4);
+    svg.appendChild(path5);
+
+    return svg;
+  }
+
+  createEditIcon() {
+    const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    svg.setAttribute("xmlns", "http://www.w3.org/2000/svg");
+    svg.setAttribute(
+      "class",
+      "h-4 w-4 fill-black-300 group-hover:fill-black-600"
+    );
+    svg.setAttribute("viewBox", "0 0 24 24");
+    svg.setAttribute("id", "edit");
+
+    const path1 = document.createElementNS(
+      "http://www.w3.org/2000/svg",
+      "path"
+    );
+    path1.setAttribute("fill", "none");
+    path1.setAttribute("d", "M0 0h24v24H0V0z");
+
+    const path2 = document.createElementNS(
+      "http://www.w3.org/2000/svg",
+      "path"
+    );
+    path2.setAttribute(
+      "d",
+      "M3 17.46v3.04c0 .28.22.5.5.5h3.04c.13 0 .26-.05.35-.15L17.81 9.94l-3.75-3.75L3.15 17.1c-.1.1-.15.22-.15.36zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"
+    );
+
+    svg.appendChild(path1);
+    svg.appendChild(path2);
+
+    return svg;
+  }
+
+  createMultiSelectInput(
+    options,
+    placeholder,
+    id,
+    updateFormStateCallback,
+    validateFieldCallback,
+    setFieldTouchedCallback
+  ) {
+    const container = document.createElement("div");
+    container.className = "relative w-full md:w-96";
+
+    const inputContainer = document.createElement("div");
+    inputContainer.className = "relative flex items-center";
+
+    const selectedOptions = new Set();
+
+    const input = document.createElement("div");
+    input.className =
+      "p-2 pr-6 outline-none flex flex-wrap gap-1 overflow-y-auto border border-black-200 focus:border-success-500 bg-grey-200 rounded-md font-light text-sm w-full md:w-96 min-h-9 h-fit relative";
+    input.tabIndex = 0;
+    input.textContent = placeholder;
+    input.setAttribute("role", "listbox");
+    input.setAttribute("aria-multiselectable", "true");
+    input.setAttribute("aria-expanded", "false");
+    input.setAttribute("aria-haspopup", "listbox");
+    input.setAttribute("id", id);
+    input.addEventListener("blur", () => {
+      updateFormStateCallback;
+      setFieldTouchedCallback(id);
+      validateFieldCallback(id);
+    });
+
+    inputContainer.appendChild(input);
+
+    const dropdown = document.createElement("div");
+    dropdown.className =
+      "absolute top-full mt-1 left-0 bg-white border border-black-200 rounded-md shadow-md max-h-36 overflow-y-auto overscroll-contain hidden w-full md:w-96 z-20";
+
+    inputContainer.appendChild(dropdown);
+
+    const clearAllButton = document.createElement("button");
+    clearAllButton.type = "button";
+    clearAllButton.appendChild(this.generateCloseIcon());
+    clearAllButton.className =
+      "flex items-center h-full px-1 text-sm text-gray-500 cursor-pointer border-l border-black-200 bg-transparent focus:outline-none absolute top-0 right-0";
+
+    clearAllButton.addEventListener("click", (event) => {
+      event.preventDefault();
+      selectedOptions.clear();
+      updateSelectedOptions();
+      updateDropdownOptions();
+      input.textContent = placeholder;
+    });
+
+    inputContainer.appendChild(clearAllButton);
+
+    container.appendChild(inputContainer);
+
+    const updateDropdownOptions = () => {
+      const allOptionsSelected = options.every((option) =>
+        selectedOptions.has(option.value)
+      );
+
+      removeAllChildren(dropdown);
+
+      if (allOptionsSelected || options.length === 0) {
+        const placeholderOption = document.createElement("div");
+        placeholderOption.className =
+          "py-1 px-2 cursor-pointer text-grey-900 font-light text-sm rounded m-2 border border-dashed";
+        placeholderOption.textContent = allOptionsSelected
+          ? "All Options Selected"
+          : "No options available";
+        dropdown.appendChild(placeholderOption);
+      } else {
+        options.forEach((option) => {
+          if (!selectedOptions.has(option.value)) {
+            const optionElement = document.createElement("div");
+            optionElement.className =
+              "p-2 cursor-pointer hover:bg-gray-100 text-sm";
+            optionElement.textContent = option.label;
+
+            optionElement.addEventListener("click", () => {
+              selectedOptions.add(option.value);
+              updateSelectedOptions();
+              updateDropdownOptions();
+            });
+
+            dropdown.appendChild(optionElement);
+          }
+        });
+      }
+    };
+
+    input.addEventListener("click", () => {
+      dropdown.classList.remove("hidden");
+      updateDropdownOptions();
+    });
+
+    document.addEventListener("click", (event) => {
+      if (!container.contains(event.target)) {
+        dropdown.classList.add("hidden");
+      }
+    });
+
+    const updateSelectedOptions = () => {
+      removeAllChildren(input);
+
+      if (selectedOptions.size === 0) {
+        input.textContent = placeholder;
+        updateFormStateCallback(id, []);
+        validateFieldCallback(id);
+      } else {
+        selectedOptions.forEach((value) => {
+          const selectedOption = document.createElement("span");
+          selectedOption.className =
+            "flex items-center h-fit selected-option px-2 cursor-pointer rounded bg-grey-600 text-grey-900 rounded-sm";
+          selectedOption.textContent = options.find(
+            (opt) => opt.value === value
+          ).label;
+
+          const clearButton = document.createElement("button");
+          clearButton.appendChild(this.generateCloseIcon());
+          clearButton.className =
+            "ml-2 p-1 text-sm text-gray-500 cursor-pointer border-none bg-transparent focus:outline-none";
+
+          clearButton.addEventListener("click", () => {
+            selectedOptions.delete(value);
+            updateSelectedOptions();
+            updateDropdownOptions();
+          });
+
+          selectedOption.appendChild(clearButton);
+          input.appendChild(selectedOption);
+          console.log(selectedOptions);
+          updateFormStateCallback(id, Array.from(selectedOptions));
+          validateFieldCallback(id);
+        });
+      }
+    };
+
+    options.forEach((option) => {
+      const optionElement = document.createElement("div");
+      optionElement.className = "p-2 cursor-pointer hover:bg-gray-100";
+      optionElement.textContent = option.label;
+
+      optionElement.addEventListener("click", () => {
+        selectedOptions.add(option.value);
+        updateSelectedOptions();
+        updateDropdownOptions();
+      });
+
+      dropdown.appendChild(optionElement);
+    });
+
+    return container;
+  }
+
+  generateSuccessIcon() {
+    const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    svg.setAttribute("xmlns", "http://www.w3.org/2000/svg");
+    svg.setAttribute("fill-rule", "evenodd");
+    svg.setAttribute("clip-rule", "evenodd");
+    svg.setAttribute("image-rendering", "optimizeQuality");
+    svg.setAttribute("shape-rendering", "geometricPrecision");
+    svg.setAttribute("text-rendering", "geometricPrecision");
+    svg.setAttribute("viewBox", "0 0 6.827 6.827");
+    svg.setAttribute("class", "w-6 h-6 fill-popup-500");
+
+    const circle = document.createElementNS(
+      "http://www.w3.org/2000/svg",
+      "circle"
+    );
+    circle.setAttribute("cx", "3.413");
+    circle.setAttribute("cy", "3.413");
+    circle.setAttribute("r", "3.413");
+    circle.setAttribute("class", "svgShape");
+
+    const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+    path.setAttribute("fill", "#ffffff");
+    path.setAttribute(
+      "d",
+      "m2.57 3.907 2.267-1.8a.356.356 0 0 1 .574.319.354.354 0 0 1-.132.238L2.704 4.708l-.025.02a.356.356 0 0 1-.032.02l-.014.009a.355.355 0 0 1-.471-.139l-.04-.067h.001l-.662-1.149a.354.354 0 1 1 .614-.353l.496.858z"
+    );
+    path.setAttribute("class", "svgShape");
+
+    svg.appendChild(circle);
+    svg.appendChild(path);
+
+    return svg;
+  }
+
+  generateInfoIcon() {
+    const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    svg.setAttribute("xmlns", "http://www.w3.org/2000/svg");
+    svg.setAttribute("viewBox", "0 0 48 48");
+    svg.setAttribute("class", "w-6 h-6 fill-sky-400");
+
+    const path1 = document.createElementNS(
+      "http://www.w3.org/2000/svg",
+      "path"
+    );
+    path1.setAttribute(
+      "d",
+      "M44 24c0 11.045-8.955 20-20 20S4 35.045 4 24 12.955 4 24 4s20 8.955 20 20z"
+    );
+    path1.setAttribute("class", "svgShape");
+
+    const path2 = document.createElementNS(
+      "http://www.w3.org/2000/svg",
+      "path"
+    );
+    path2.setAttribute("fill", "#ffffff");
+    path2.setAttribute(
+      "d",
+      "M22 22h4v11h-4V22zM26.5 16.5c0 1.379-1.121 2.5-2.5 2.5s-2.5-1.121-2.5-2.5S22.621 14 24 14s2.5 1.121 2.5 2.5z"
+    );
+    path2.setAttribute("class", "colorFFF svgShape");
+
+    svg.appendChild(path1);
+    svg.appendChild(path2);
+
+    return svg;
+  }
+
+  generateErrorIcon() {
+    const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    svg.setAttribute("xmlns", "http://www.w3.org/2000/svg");
+    svg.setAttribute("viewBox", "0 0 48 48");
+    svg.setAttribute("class", "w-6 h-6 fill-danger-500");
+
+    const path1 = document.createElementNS(
+      "http://www.w3.org/2000/svg",
+      "path"
+    );
+    path1.setAttribute(
+      "d",
+      "M44 24c0 11.045-8.955 20-20 20S4 35.045 4 24 12.955 4 24 4s20 8.955 20 20z"
+    );
+    path1.setAttribute("class", "svgShape");
+
+    const path2 = document.createElementNS(
+      "http://www.w3.org/2000/svg",
+      "path"
+    );
+    path2.setAttribute("fill", "#ffffff");
+    path2.setAttribute(
+      "d",
+      "M22 22h4v11h-4V22zM26.5 16.5c0 1.379-1.121 2.5-2.5 2.5s-2.5-1.121-2.5-2.5S22.621 14 24 14s2.5 1.121 2.5 2.5z"
+    );
+    path2.setAttribute("class", "colorFFF svgShape");
+
+    svg.appendChild(path1);
+    svg.appendChild(path2);
+
+    return svg;
+  }
+
+  createToast(message, icon = null) {
+    const toast = document.createElement("div");
+    toast.className =
+      "flex gap-x-2 items-center w-full max-w-sm p-2 text-gray-500 bg-white rounded-lg shadow dark:text-gray-400 dark:bg-gray-800";
+
+    const iconContainer = document.createElement("div");
+    iconContainer.className =
+      "inline-flex items-center justify-center flex-shrink-0 w-fit h-fit text-blue-500 rounded-lg dark:bg-blue-800 dark:text-blue-200";
+
+    const iconSpan = document.createElement("span");
+    iconSpan.className = "sr-only";
+    iconSpan.textContent = "Icon";
+
+    if (icon) iconContainer.appendChild(icon);
+    iconContainer.appendChild(iconSpan);
+
+    const messageDiv = document.createElement("div");
+    messageDiv.className = "ms-3 text-sm font-normal text-black-500 font-light";
+    messageDiv.textContent = message;
+
+    const closeButton = document.createElement("button");
+    closeButton.type = "button";
+    closeButton.className =
+      "ms-auto mx-1.5 -my-1.5 bg-white text-gray-400 hover:text-gray-900 rounded-lg focus:ring-2 focus:ring-gray-300 p-1 hover:bg-grey-300 inline-flex items-center justify-center dark:text-gray-500 dark:hover:text-white dark:bg-grey-800 dark:hover:bg-grey-700";
+    closeButton.appendChild(this.generateCloseIcon());
+    closeButton.addEventListener("click", (event) => {
+      event.preventDefault();
+      const toastContainer = document.querySelector("#toast-container");
+      removeAllChildren(toastContainer);
+      toastContainer.classList.remove("top-5", "right-5");
+      if (typeof this.toastTimeout === "number") {
+        clearTimeout(this.toastTimeout);
+      }
+    });
+
+    toast.appendChild(iconContainer);
+    toast.appendChild(messageDiv);
+    toast.appendChild(closeButton);
+
+    return toast;
+  }
+
+  showToast(message, type = "info") {
+    const toastContainer = document.querySelector("#toast-container");
+    toastContainer.classList.add("top-5", "right-5");
+    let icon = null;
+    if (type === "success") {
+      icon = this.generateSuccessIcon();
+    }
+
+    if (type === "info") {
+      icon = this.generateInfoIcon();
+    }
+
+    if (type === "error") {
+      icon = this.generateErrorIcon();
+    }
+
+    const toastElement = this.createToast(message, icon);
+    toastContainer.appendChild(toastElement);
+
+    this.toastTimeout = setTimeout(() => {
+      toastContainer.removeChild(toastElement);
+      toastContainer.classList.remove("top-5", "right-5");
+    }, 5000);
+
+    console.log("Timeout Id: ", this.toastTimeout);
+  }
+
+  renderPageLoader() {
+    const loader = this.renderLoader();
+    const pageLoader = document.createElement("div");
+    pageLoader.className =
+      "flex h-screen w-screen justify-center items-center bg-grey-400";
+    pageLoader.appendChild(loader);
+    return pageLoader;
+  }
   async renderProtectedLayout() {
     const contentContainer = document.createElement("div");
     contentContainer.id = "content";
     contentContainer.className =
       "flex flex-col md:flex-row h-screen w-screen relative overflow-hidden bg-grey-400 overflow-hidden overscroll-contain";
+
+    // toast container
+    const toastContainer = document.createElement("div");
+    toastContainer.className = "fixed z-50";
+    toastContainer.id = "toast-container";
+    contentContainer.appendChild(toastContainer);
 
     const sideBar = document.createElement("aside");
     sideBar.className =
@@ -194,7 +671,7 @@ export default class {
 
     const navBar = document.createElement("div");
     navBar.className =
-      "flex md:hidden px-5 justify-between items-center w-full min-h-fit bg-success-500 border border-red-500";
+      "flex md:hidden px-5 justify-between items-center w-full min-h-fit bg-success-500";
 
     const navBrand = document.createElement("header");
     navBrand.className = "flex gap-x-1.5 md:gap-x-3 h-fit w-fit";
@@ -245,16 +722,28 @@ export default class {
 
     const profilePhoto = document.createElement("img");
     profilePhoto.className =
-      "h-24 w-24 bg-grey-100 rounded-full border-grey object-contain";
+      "h-24 w-24 bg-grey-100 rounded-full object-contain";
     profilePhoto.src = "/static/assets/images/profile.png";
     profilePhoto.alt = "MIU Logo";
-    profile.appendChild(profilePhoto);
+
+    const profilePhotoSkeleton = document.createElement("div");
+    profilePhotoSkeleton.className =
+      "h-24 w-24 flex justify-center items-center bg-grey-100 rounded-full";
+
+    const profilePhotoSkeletonContent = document.createElement("span");
+    profilePhotoSkeletonContent.className = "text-xl font-light";
+    profilePhotoSkeletonContent.textContent = this.profile?.user_name
+      ? this.getInitials(this.profile.user_name)
+      : "Profile";
+    profilePhotoSkeleton.appendChild(profilePhotoSkeletonContent);
+
+    this.profile?.avatar_url
+      ? profile.appendChild(profilePhoto)
+      : profile.appendChild(profilePhotoSkeleton);
 
     const username = document.createElement("figcaption");
-    // Add the fetched user's name to this area. For now let's use name
-    const name = "leticia namika";
     username.className = "capitalize text-white max-w-48 text-center";
-    username.textContent = name;
+    username.textContent = this.profile.user_name;
 
     profile.appendChild(username);
 
@@ -317,7 +806,8 @@ export default class {
     sideBar.appendChild(sideNav);
 
     const viewArea = document.createElement("main");
-    viewArea.className = "flex h-full w-full border border-danger-500";
+    viewArea.className =
+      "flex flex-col h-full w-full overflow-y-auto overscroll-contain p-5 md:p-10";
     viewArea.id = "content-area";
 
     contentContainer.appendChild(sideBar);

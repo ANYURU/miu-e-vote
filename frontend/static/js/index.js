@@ -10,6 +10,7 @@ import Results from "./views/ResultsView.js";
 import Profile from "./views/ProfileView.js";
 import CandidatesView from "./views/CandidatesView.js";
 import UnauthorizedView from "./views/UnauthorizedView.js";
+import SetElection from "./views/SetElection.js";
 import createSupabaseClient from "./supabase/supabase.js";
 
 const supabaseClient = createSupabaseClient(
@@ -18,23 +19,37 @@ const supabaseClient = createSupabaseClient(
 );
 
 let userRole = null;
+let profile = null;
 
 supabaseClient.auth.onAuthStateChange((event, session) => {
   if (session) {
-    getUserRole().then((role) => {
-      userRole = role;
-      router();
-    });
+    const {
+      user: { id: user_id },
+    } = session;
+
+    fetchUserDetails(user_id);
   } else {
     userRole = null;
     router();
   }
 });
 
+async function fetchUserDetails(user_id) {
+  userRole = await getUserRole(user_id);
+  profile = await getUserProfile(user_id);
+  router();
+}
+
 const navigateTo = (url) => {
   history.pushState(null, null, url);
   router();
 };
+
+function removeAllChildren(element) {
+  while (element.firstChild) {
+    element.removeChild(element.firstChild);
+  }
+}
 
 const checkAuth = async () => {
   const {
@@ -43,13 +58,7 @@ const checkAuth = async () => {
   return session ?? null;
 };
 
-const getUserRole = async () => {
-  const {
-    data: {
-      user: { id: user_id },
-    },
-  } = await supabaseClient.auth.getUser();
-
+async function getUserRole(user_id) {
   const {
     data: [
       {
@@ -68,7 +77,18 @@ const getUserRole = async () => {
     .eq("user_id", user_id);
 
   return role_name;
-};
+}
+
+async function getUserProfile(user_id) {
+  const { data: userProfile } = await supabaseClient
+    .from("users")
+    .select()
+    .eq("user_id", user_id)
+    .limit(1)
+    .single();
+
+  return userProfile;
+}
 
 const router = async () => {
   const routes = [
@@ -90,6 +110,11 @@ const router = async () => {
     {
       path: "/elections",
       view: Elections,
+      requiresAuth: true,
+    },
+    {
+      path: "/elections/set-election",
+      view: SetElection,
       requiresAuth: true,
     },
     {
@@ -167,12 +192,7 @@ const router = async () => {
 
   const view = new match.route.view();
   view.setRole(userRole);
-
-  function removeAllChildren(element) {
-    while (element.firstChild) {
-      element.removeChild(element.firstChild);
-    }
-  }
+  view.setProfile(profile);
 
   const content = await view.renderContent();
   const root = document.querySelector("#app");
@@ -180,6 +200,6 @@ const router = async () => {
   root.appendChild(content);
 };
 
-window.addEventListener("popstate", router());
+window.addEventListener("popstate", router);
 
-export { navigateTo, supabaseClient, checkAuth };
+export { navigateTo, supabaseClient, checkAuth, removeAllChildren };
