@@ -604,7 +604,7 @@ export default class {
     closeButton.addEventListener("click", (event) => {
       event.preventDefault();
       const toastContainer = document.querySelector("#toast-container");
-      removeAllChildren(toastContainer)
+      removeAllChildren(toastContainer);
       toastContainer.classList.remove("top-5", "right-5");
       if (typeof this.toastTimeout === "number") {
         clearTimeout(this.toastTimeout);

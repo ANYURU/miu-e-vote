@@ -27,24 +27,26 @@ export default class extends AbstractView {
     this.isFetching = false;
     this.departments = null;
     this.selectedOptions = new Set();
-    this.formState = {
-      election_title: "",
-      election_description: "",
-      election_faculty: "",
-      election_department: "",
-      election_years: [],
-      election_semesters: [],
-      election_positions: [],
-      election_start_date: "",
-      election_end_date: "",
-      election_start_time: "",
-      election_end_time: "",
-      election_application_open_date: "",
-      election_application_close_date: "",
-      errors: {},
-      touched: {},
-      isSubmitting: false,
-    };
+    this.electionPositions = [];
+    (this.facultyOptions = []),
+      (this.formState = {
+        election_title: "",
+        election_description: "",
+        election_faculty: "",
+        election_department: "",
+        election_years: [],
+        election_semesters: [],
+        election_positions: [],
+        election_start_date: "",
+        election_end_date: "",
+        election_start_time: "",
+        election_end_time: "",
+        election_application_open_date: "",
+        election_application_close_date: "",
+        errors: {},
+        touched: {},
+        isSubmitting: false,
+      });
 
     this.validationSchema = {
       election_title: [
@@ -206,121 +208,10 @@ export default class extends AbstractView {
     errorElement.textContent = null;
   }
 
-  async fetchFormOptions(facultyElectionSelect) {
-    await this.renderFacultyOptions(facultyElectionSelect);
-
-    const dataContainer = document.querySelector("#data-container");
-    const dataLoaderContainer = document.querySelector(
-      "#data-loader-container"
-    );
-
-    if (dataLoaderContainer) dataContainer.removeChild(dataLoaderContainer);
-  }
-
-  async fetchFaculties() {
-    const { data } = await supabaseClient.from("faculties").select(`
-        faculty_id,
-        faculty_name,
-        departments(
-          department_id,
-          department_name
-        )
-      `);
-    return data;
-  }
-
-  async renderFacultyOptions(electionFacultySelect) {
-    const faculties = await this.fetchFaculties();
-    this.loading = false;
-
-    const allOptions = faculties.map((faculty) => faculty.faculty_id).join(",");
-    const allOption = document.createElement("option");
-    allOption.textContent = "All";
-    allOption.value = allOptions;
-
-    const facultyOptions = faculties.map(function (faculty) {
-      const option = document.createElement("option");
-      option.textContent = faculty.faculty_name;
-      option.value = faculty.faculty_id;
-      return option;
-    });
-
-    electionFacultySelect.addEventListener("change", (event) => {
-      const { name: fieldName, value } = event.target;
-      this.formState[fieldName] = value;
-      this.validateField(fieldName);
-
-      const selectedFacultyOptions = value.split(",");
-      const facultyDepartments = faculties
-        .filter((faculty) =>
-          selectedFacultyOptions.includes(faculty.faculty_id)
-        )
-        .flatMap((faculty) => faculty.departments);
-
-      const allOptions = facultyDepartments
-        .map((department) => department.department_id)
-        .join(",");
-
-      const allOption = document.createElement("option");
-      allOption.textContent = "All";
-      allOption.value = allOptions;
-
-      const departmentOptions = facultyDepartments.map(function (department) {
-        const option = document.createElement("option");
-        option.textContent = department.department_name;
-        option.value = department.department_id;
-        return option;
-      });
-
-      const electionDepartmentSelect = document.getElementById(
-        ELEMENT_IDS.ELECTION_DEPARTMENT_SELECT
-      );
-      removeAllChildren(electionDepartmentSelect);
-      const defaultOption = document.createElement("option");
-      defaultOption.textContent = "-- Select Department --";
-      defaultOption.disabled = true;
-      defaultOption.selected = true;
-      defaultOption.value = "";
-      electionDepartmentSelect.append(
-        defaultOption,
-        allOption,
-        ...departmentOptions
-      );
-    });
-
-    electionFacultySelect.append(allOption, ...facultyOptions);
-  }
-
-  async renderContent() {
-    const pageLoader = this.renderPageLoader();
-    if (!this.role) return pageLoader;
-
-    const layout = await this.renderProtectedLayout();
-    const loader = this.renderLoader();
-
-    const loaderContainer = document.createElement("div");
-    loaderContainer.className =
-      "flex justify-center h-full w-full items-center absolute";
-    loaderContainer.appendChild(loader);
-    loaderContainer.id = "data-loader-container";
-
-    const contentArea = layout.querySelector("#content-area");
-
-    const contentHeader = document.createElement("header");
-    contentHeader.className = "flex justify-center h-fit";
-
-    const dataContainer = document.createElement("div");
-    dataContainer.id = "data-container";
-    dataContainer.className = "w-full h-fit min-h-full relative pt-2";
-    dataContainer.appendChild(loaderContainer);
-
-    const viewHeading = document.createElement("h2");
-    viewHeading.className = "text-lg font-semibold capitalize";
-    viewHeading.textContent = "Create election";
-
-    contentHeader.appendChild(viewHeading);
+  renderElectionForm() {
     const electionForm = document.createElement("form");
     electionForm.className = "flex flex-col items-center h-fit gap-y-2 pb-10";
+    electionForm.id = "election-form";
 
     // Title form field
     const electionTitleFormField = this.createFieldContainer();
@@ -376,7 +267,6 @@ export default class extends AbstractView {
 
     // Fetching the faculty options
     // this.renderFacultyOptions(electionFacultySelect);
-    this.fetchFormOptions(electionFacultySelect);
     const electionFacultySelectError = this.createErrorElement(
       ELEMENT_IDS.ELECTION_FACULTY_SELECT
     );
@@ -473,26 +363,26 @@ export default class extends AbstractView {
       ELEMENT_IDS.ELECTION_POSITION_SELECT,
       "Positions"
     );
-    const electionPositionOptions = [
-      { label: "Class Representatives", value: "Class Representatives" },
-      { label: "Guild President", value: "Guild President" },
-      { label: "CGC Chairperson", value: "CGC Chairperson" },
-      { label: "College Guild Council", value: "College Guild Council" },
-      { label: "GRC Schools", value: "GRC Schools" },
-      { label: "GRC Halls", value: "GRC Halls" },
-      { label: "GRC Disablity", value: "GRC Disablity" },
-      { label: "GRC Tribunal", value: "GRC Tribunal" },
-      { label: "Games Union School", value: "Games Union School" },
-      { label: "Students Debating Union", value: "Students Debating Union" },
-      { label: "SCR Chairperson", value: "SCR Chairperson" },
-      { label: "SCR Disciplinary", value: "SCR Discriplinary" },
-      { label: "SCR Entertainment", value: "SCR Entertainment" },
-      { label: "SCR Finance Secretary", value: "SCR Finance Secretary" },
-      { label: "SCR General Secretary", value: "SCR General Secretary" },
-      { label: "SCR Health Secretary", value: "SCR Health Secretary" },
-    ];
+    // const electionPositionOptions = [
+    //   { label: "Class Representatives", value: "Class Representatives" },
+    //   { label: "Guild President", value: "Guild President" },
+    //   { label: "CGC Chairperson", value: "CGC Chairperson" },
+    //   { label: "College Guild Council", value: "College Guild Council" },
+    //   { label: "GRC Schools", value: "GRC Schools" },
+    //   { label: "GRC Halls", value: "GRC Halls" },
+    //   { label: "GRC Disablity", value: "GRC Disablity" },
+    //   { label: "GRC Tribunal", value: "GRC Tribunal" },
+    //   { label: "Games Union School", value: "Games Union School" },
+    //   { label: "Students Debating Union", value: "Students Debating Union" },
+    //   { label: "SCR Chairperson", value: "SCR Chairperson" },
+    //   { label: "SCR Disciplinary", value: "SCR Discriplinary" },
+    //   { label: "SCR Entertainment", value: "SCR Entertainment" },
+    //   { label: "SCR Finance Secretary", value: "SCR Finance Secretary" },
+    //   { label: "SCR General Secretary", value: "SCR General Secretary" },
+    //   { label: "SCR Health Secretary", value: "SCR Health Secretary" },
+    // ];
     const electionPositionOptionsSelect = this.createMultiSelectInput(
-      electionPositionOptions,
+      this.electionPositions,
       "-- Select Positions --",
       ELEMENT_IDS.ELECTION_POSITION_SELECT,
       this.updateFormState.bind(this),
@@ -695,6 +585,152 @@ export default class extends AbstractView {
       electionEndTimeFormField,
       setElectionButton
     );
+
+    return electionForm;
+  }
+
+  async fetchFormOptions() {
+    this.isFetching = true;
+    const electionPositions = await this.fetchPositions();
+    const facultyOptions = await this.fetchFaculties();
+
+    this.electionPositions = electionPositions.map(({ post_id, post }) => {
+      return { label: post, value: post_id };
+    });
+
+    this.facultyOptions = facultyOptions;
+    this.renderFacultyOptions();
+
+    const dataContainer = document.querySelector("#data-container");
+    const dataLoaderContainer = document.querySelector(
+      "#data-loader-container"
+    );
+
+    if (dataLoaderContainer) {
+      const previousElectionForm = document.querySelector("#election-form");
+      dataContainer.removeChild(previousElectionForm);
+      dataContainer.removeChild(dataLoaderContainer);
+
+      const electionForm = this.renderElectionForm();
+      const electionFacultySelect =
+        electionForm.querySelector("#election_faculty");
+      this.renderFacultyOptions(electionFacultySelect);
+      dataContainer.appendChild(electionForm);
+    }
+
+    this.isFetching = false;
+  }
+
+  async fetchFaculties() {
+    const { data } = await supabaseClient.from("faculties").select(`
+        faculty_id,
+        faculty_name,
+        departments(
+          department_id,
+          department_name
+        )
+      `);
+    return data;
+  }
+
+  async fetchPositions() {
+    const { data } = await supabaseClient.from("posts").select();
+    return data;
+  }
+
+  async renderFacultyOptions(electionFacultySelect) {
+    const allOptions = this.facultyOptions
+      .map((faculty) => faculty.faculty_id)
+      .join(",");
+    const allOption = document.createElement("option");
+    allOption.textContent = "All";
+    allOption.value = allOptions;
+
+    const facultyOptions = this.facultyOptions.map(function (faculty) {
+      const option = document.createElement("option");
+      option.textContent = faculty.faculty_name;
+      option.value = faculty.faculty_id;
+      return option;
+    });
+
+    electionFacultySelect.addEventListener("change", (event) => {
+      const { name: fieldName, value } = event.target;
+      this.formState[fieldName] = value;
+      this.validateField(fieldName);
+
+      const selectedFacultyOptions = value.split(",");
+      const facultyDepartments = this.facultyOptions
+        .filter((faculty) =>
+          selectedFacultyOptions.includes(faculty.faculty_id)
+        )
+        .flatMap((faculty) => faculty.departments);
+
+      const allOptions = facultyDepartments
+        .map((department) => department.department_id)
+        .join(",");
+
+      const allOption = document.createElement("option");
+      allOption.textContent = "All";
+      allOption.value = allOptions;
+
+      const departmentOptions = facultyDepartments.map(function (department) {
+        const option = document.createElement("option");
+        option.textContent = department.department_name;
+        option.value = department.department_id;
+        return option;
+      });
+
+      const electionDepartmentSelect = document.getElementById(
+        ELEMENT_IDS.ELECTION_DEPARTMENT_SELECT
+      );
+      removeAllChildren(electionDepartmentSelect);
+      const defaultOption = document.createElement("option");
+      defaultOption.textContent = "-- Select Department --";
+      defaultOption.disabled = true;
+      defaultOption.selected = true;
+      defaultOption.value = "";
+      electionDepartmentSelect.append(
+        defaultOption,
+        allOption,
+        ...departmentOptions
+      );
+    });
+
+    electionFacultySelect.append(allOption, ...facultyOptions);
+  }
+
+  async renderContent() {
+    const pageLoader = this.renderPageLoader();
+    if (!this.role) return pageLoader;
+
+    const layout = await this.renderProtectedLayout();
+    const loader = this.renderLoader();
+
+    const loaderContainer = document.createElement("div");
+    loaderContainer.className =
+      "flex justify-center h-full w-full items-center absolute";
+    loaderContainer.appendChild(loader);
+    loaderContainer.id = "data-loader-container";
+
+    const contentArea = layout.querySelector("#content-area");
+
+    const contentHeader = document.createElement("header");
+    contentHeader.className = "flex justify-center h-fit";
+
+    const dataContainer = document.createElement("div");
+    dataContainer.id = "data-container";
+    dataContainer.className = "w-full h-fit min-h-full relative pt-2";
+
+    const viewHeading = document.createElement("h2");
+    viewHeading.className = "text-lg font-semibold capitalize";
+    viewHeading.textContent = "Create election";
+
+    contentHeader.appendChild(viewHeading);
+    const electionForm = this.renderElectionForm();
+
+    this.fetchFormOptions();
+    if (this.isFetching || this.loading)
+      dataContainer.appendChild(loaderContainer);
 
     dataContainer.appendChild(electionForm);
     contentArea.appendChild(contentHeader);

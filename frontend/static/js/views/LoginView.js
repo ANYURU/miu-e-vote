@@ -115,6 +115,12 @@ class LoginView extends AbstractView {
     contentContainer.className =
       "min-h-screen w-screen flex justify-center items-center relative overflow-hidden bg-grey-400";
 
+    // toast container
+    const toastContainer = document.createElement("div");
+    toastContainer.className = "fixed z-50";
+    toastContainer.id = "toast-container";
+    contentContainer.appendChild(toastContainer);
+
     const formContainer = document.createElement("div");
     formContainer.className =
       "flex flex-col gap-y-1 w-5/6 md:w-80 px-4 py-5 items-center bg-white rounded-md";
@@ -203,6 +209,7 @@ class LoginView extends AbstractView {
         }
 
         if (data?.session) {
+          this.showToast("Successfully logged in", "success");
           navigateTo("/elections");
           // Alert the user that they have successfully logged in
         }
