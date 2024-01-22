@@ -452,7 +452,6 @@ export default class {
 
           selectedOption.appendChild(clearButton);
           input.appendChild(selectedOption);
-          console.log(selectedOptions);
           updateFormStateCallback(id, Array.from(selectedOptions));
           validateFieldCallback(id);
         });
@@ -743,7 +742,7 @@ export default class {
 
     const username = document.createElement("figcaption");
     username.className = "capitalize text-white max-w-48 text-center";
-    username.textContent = this.profile.user_name;
+    username.textContent = this.profile?.user_name ?? "";
 
     profile.appendChild(username);
 
