@@ -992,6 +992,11 @@ export default class extends AbstractView {
       touched: {},
       isSubmitting: false,
     };
+    
+    const buttons = document.querySelectorAll(".multiselect-clear-all-button");
+    buttons.forEach((button) => {
+      button.click();
+    });
     document.querySelector("#election-form").reset();
     return;
   }
