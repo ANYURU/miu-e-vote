@@ -363,7 +363,7 @@ export default class {
     clearAllButton.type = "button";
     clearAllButton.appendChild(this.generateCloseIcon());
     clearAllButton.className =
-      "flex items-center h-full px-1 text-sm text-gray-500 cursor-pointer border-l border-black-200 bg-transparent focus:outline-none absolute top-0 right-0";
+      "flex items-center h-full px-1 text-sm text-gray-500 cursor-pointer border-l border-black-200 bg-transparent focus:outline-none absolute top-0 right-0 multiselect-clear-all-button";
 
     clearAllButton.addEventListener("click", (event) => {
       event.preventDefault();
@@ -452,7 +452,6 @@ export default class {
 
           selectedOption.appendChild(clearButton);
           input.appendChild(selectedOption);
-          console.log(selectedOptions);
           updateFormStateCallback(id, Array.from(selectedOptions));
           validateFieldCallback(id);
         });
@@ -743,7 +742,7 @@ export default class {
 
     const username = document.createElement("figcaption");
     username.className = "capitalize text-white max-w-48 text-center";
-    username.textContent = this.profile.user_name;
+    username.textContent = this.profile?.user_name ?? "";
 
     profile.appendChild(username);
 

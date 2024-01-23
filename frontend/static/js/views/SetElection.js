@@ -1,5 +1,5 @@
 import AbstractView from "./AbstractView.js";
-import { supabaseClient, navigateTo, removeAllChildren } from "../index.js";
+import { supabaseClient, removeAllChildren } from "../index.js";
 
 const ELEMENT_IDS = {
   ELECTION_TITLE_INPUT: "election_title",
@@ -27,26 +27,32 @@ export default class extends AbstractView {
     this.isFetching = false;
     this.departments = null;
     this.selectedOptions = new Set();
+
+    // Default form options.
     this.electionPositions = [];
-    (this.facultyOptions = []),
-      (this.formState = {
-        election_title: "",
-        election_description: "",
-        election_faculty: "",
-        election_department: "",
-        election_years: [],
-        election_semesters: [],
-        election_positions: [],
-        election_start_date: "",
-        election_end_date: "",
-        election_start_time: "",
-        election_end_time: "",
-        election_application_open_date: "",
-        election_application_close_date: "",
-        errors: {},
-        touched: {},
-        isSubmitting: false,
-      });
+    this.facultyOptions = [];
+    this.semesterOptions = [];
+    this.yearOptions = [];
+
+    // Default form state
+    this.formState = {
+      election_title: "",
+      election_description: "",
+      election_faculty: "",
+      election_department: "",
+      election_years: [],
+      election_semesters: [],
+      election_positions: [],
+      election_start_date: "",
+      election_end_date: "",
+      election_start_time: "",
+      election_end_time: "",
+      election_application_open_date: "",
+      election_application_close_date: "",
+      errors: {},
+      touched: {},
+      isSubmitting: false,
+    };
 
     this.validationSchema = {
       election_title: [
@@ -304,14 +310,9 @@ export default class extends AbstractView {
       ELEMENT_IDS.ELECTION_YEAR_SELECT,
       "Years of Study"
     );
-    const yearOptions = [
-      { label: "1", value: 1 },
-      { label: "2", value: 2 },
-      { label: "3", value: 3 },
-      { label: "4", value: 4 },
-    ];
+
     const electionYearOptionsSelect = this.createMultiSelectInput(
-      yearOptions,
+      this.yearOptions,
       "-- Select Years of Study --",
       ELEMENT_IDS.ELECTION_YEAR_SELECT,
       this.updateFormState.bind(this),
@@ -336,12 +337,8 @@ export default class extends AbstractView {
       "Semeters"
     );
 
-    const semesterOptions = [
-      { label: "First", value: 1 },
-      { label: "Second", value: 2 },
-    ];
     const electionSemesterOptionsSelect = this.createMultiSelectInput(
-      semesterOptions,
+      this.semesterOptions,
       "-- Select Semesters --",
       ELEMENT_IDS.ELECTION_SEMESTER_SELECT,
       this.updateFormState.bind(this),
@@ -363,24 +360,7 @@ export default class extends AbstractView {
       ELEMENT_IDS.ELECTION_POSITION_SELECT,
       "Positions"
     );
-    // const electionPositionOptions = [
-    //   { label: "Class Representatives", value: "Class Representatives" },
-    //   { label: "Guild President", value: "Guild President" },
-    //   { label: "CGC Chairperson", value: "CGC Chairperson" },
-    //   { label: "College Guild Council", value: "College Guild Council" },
-    //   { label: "GRC Schools", value: "GRC Schools" },
-    //   { label: "GRC Halls", value: "GRC Halls" },
-    //   { label: "GRC Disablity", value: "GRC Disablity" },
-    //   { label: "GRC Tribunal", value: "GRC Tribunal" },
-    //   { label: "Games Union School", value: "Games Union School" },
-    //   { label: "Students Debating Union", value: "Students Debating Union" },
-    //   { label: "SCR Chairperson", value: "SCR Chairperson" },
-    //   { label: "SCR Disciplinary", value: "SCR Discriplinary" },
-    //   { label: "SCR Entertainment", value: "SCR Entertainment" },
-    //   { label: "SCR Finance Secretary", value: "SCR Finance Secretary" },
-    //   { label: "SCR General Secretary", value: "SCR General Secretary" },
-    //   { label: "SCR Health Secretary", value: "SCR Health Secretary" },
-    // ];
+
     const electionPositionOptionsSelect = this.createMultiSelectInput(
       this.electionPositions,
       "-- Select Positions --",
@@ -549,8 +529,9 @@ export default class extends AbstractView {
     setElectionButton.textContent = "Set Election";
     setElectionButton.disabled = this.formState.isSubmitting;
 
-    setElectionButton.addEventListener("click", (event) => {
+    setElectionButton.addEventListener("click", async (event) => {
       event.preventDefault();
+      this.isSubmitting = true;
 
       // validate all fields
       Object.keys(this.validationSchema).forEach((fieldName) => {
@@ -563,10 +544,84 @@ export default class extends AbstractView {
       );
 
       if (!hasErrors) {
-        this.showToast("Successfully created election", "success");
-      }
+        const {
+          election_title,
+          election_description,
+          election_application_open_date,
+          election_application_close_date,
+          election_start_date,
+          election_end_date,
+          election_start_time,
+          election_end_time,
+          election_faculty,
+          election_department,
+          election_years,
+          election_positions,
+          election_semesters,
+        } = this.formState;
 
-      console.log("Form State: ", this.formState);
+        const formatted_start_date = this.parseDateTime(
+          election_start_date,
+          election_start_time
+        );
+        const formatted_end_date = this.parseDateTime(
+          election_end_date,
+          election_end_time
+        );
+        const formatted_application_open_date = this.parseDateTime(
+          election_application_open_date,
+          election_start_time
+        );
+        const formatted_application_close_date = this.parseDateTime(
+          election_application_close_date,
+          election_end_time
+        );
+
+        // Create the election
+        const {
+          data: { election_id },
+          error,
+        } = await supabaseClient
+          .from("elections")
+          .insert({
+            election_title,
+            election_description,
+            election_application_open_date: formatted_application_open_date,
+            election_application_close_date: formatted_application_close_date,
+            election_start_date: formatted_start_date,
+            election_end_date: formatted_end_date,
+            created_by: this.profile.user_id,
+          })
+          .select()
+          .single();
+
+        if (error) {
+          console.log("Error: ", JSON.stringify(error, null, 2));
+          this.showToast(error.message, "error");
+          this.resetFormValues();
+          return;
+        }
+
+        if (election_id) {
+          await Promise.all([
+            this.createElectionFaculties(
+              election_id,
+              election_faculty.split(",")
+            ),
+            this.createElectionDepartments(
+              election_id,
+              election_department.split(",")
+            ),
+            this.createElectionPosts(election_id, election_positions),
+            this.createElectionYears(election_id, election_years),
+            this.createElectionSemesters(election_id, election_semesters),
+          ]);
+
+          this.showToast("Successfully created election", "success");
+          this.resetFormValues();
+          return;
+        }
+      }
     });
 
     electionForm.append(
@@ -589,17 +644,113 @@ export default class extends AbstractView {
     return electionForm;
   }
 
+  async createElectionFaculties(election_id, faculties_ids) {
+    const electionFacultyRecords = faculties_ids.map((faculty_id) => ({
+      faculty_id,
+      election_id,
+    }));
+    const { data, error } = await supabaseClient
+      .from("election_faculties")
+      .insert(electionFacultyRecords)
+      .select();
+
+    if (error) throw error;
+    return data;
+  }
+
+  async createElectionDepartments(election_id, department_ids) {
+    const electionDepartmentRecords = department_ids.map((department_id) => ({
+      election_id,
+      department_id,
+    }));
+
+    const { data, error } = await supabaseClient
+      .from("election_departments")
+      .insert(electionDepartmentRecords)
+      .select();
+
+    if (error) throw error;
+    return data;
+  }
+
+  async createElectionPosts(election_id, post_ids) {
+    const electionPostRecords = post_ids.map((post_id) => ({
+      election_id,
+      post_id,
+    }));
+
+    const { data, error } = await supabaseClient
+      .from("election_posts")
+      .insert(electionPostRecords)
+      .select();
+
+    if (error) throw error;
+    return data;
+  }
+
+  async createElectionYears(election_id, years_ids) {
+    const electionYearRecords = years_ids.map((year_id) => ({
+      election_id,
+      year_id,
+    }));
+
+    const { data, error } = await supabaseClient
+      .from("election_years")
+      .insert(electionYearRecords)
+      .select();
+
+    if (error) throw error;
+    return data;
+  }
+
+  async createElectionSemesters(election_id, semester_ids) {
+    const electionSemesterRecords = semester_ids.map((semester_id) => ({
+      election_id,
+      semester_id,
+    }));
+
+    const { data, error } = await supabaseClient
+      .from("election_semesters")
+      .insert(electionSemesterRecords)
+      .select();
+
+    if (error) throw error;
+    return data;
+  }
+
+  parseDateTime(dateValue, timeValue) {
+    const dateTimeString = `${dateValue}T${timeValue}`;
+    const date = new Date(dateTimeString);
+    date.setMinutes(date.getMinutes() - date.getTimezoneOffset());
+    return date.toISOString();
+  }
+
   async fetchFormOptions() {
     this.isFetching = true;
-    const electionPositions = await this.fetchPositions();
-    const facultyOptions = await this.fetchFaculties();
+
+    const [electionPositions, facultyOptions, yearOptions, semesterOptions] =
+      await Promise.all([
+        this.fetchPositions(),
+        this.fetchFaculties(),
+        this.fetchYears(),
+        this.fetchSemesters(),
+      ]);
 
     this.electionPositions = electionPositions.map(({ post_id, post }) => {
       return { label: post, value: post_id };
     });
 
     this.facultyOptions = facultyOptions;
-    this.renderFacultyOptions();
+
+    this.yearOptions = yearOptions.map(({ year_id, year_value }) => {
+      return { label: year_value, value: year_id };
+    });
+
+    this.semesterOptions = semesterOptions.map(
+      ({ semester_id, semester_label }) => {
+        return { label: semester_label, value: semester_id };
+      }
+    );
 
     const dataContainer = document.querySelector("#data-container");
     const dataLoaderContainer = document.querySelector(
@@ -635,6 +786,19 @@ export default class extends AbstractView {
 
   async fetchPositions() {
     const { data } = await supabaseClient.from("posts").select();
+    return data;
+  }
+
+  async fetchSemesters() {
+    const { data } = await supabaseClient.from("semesters").select();
+    return data;
+  }
+
+  async fetchYears() {
+    const { data } = await supabaseClient
+      .from("years")
+      .select()
+      .order("year_value", { ascending: true });
     return data;
   }
 
@@ -807,5 +971,33 @@ export default class extends AbstractView {
 
   setFieldTouched(fieldId) {
     this.formState.touched[fieldId] = true;
+  }
+
+  resetFormValues() {
+    this.formState = {
+      election_title: "",
+      election_description: "",
+      election_faculty: "",
+      election_department: "",
+      election_years: [],
+      election_semesters: [],
+      election_positions: [],
+      election_start_date: "",
+      election_end_date: "",
+      election_start_time: "",
+      election_end_time: "",
+      election_application_open_date: "",
+      election_application_close_date: "",
+      errors: {},
+      touched: {},
+      isSubmitting: false,
+    };
+    
+    const buttons = document.querySelectorAll(".multiselect-clear-all-button");
+    buttons.forEach((button) => {
+      button.click();
+    });
+    document.querySelector("#election-form").reset();
+    return;
   }
 }
