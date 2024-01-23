@@ -363,7 +363,7 @@ export default class {
     clearAllButton.type = "button";
     clearAllButton.appendChild(this.generateCloseIcon());
     clearAllButton.className =
-      "flex items-center h-full px-1 text-sm text-gray-500 cursor-pointer border-l border-black-200 bg-transparent focus:outline-none absolute top-0 right-0";
+      "flex items-center h-full px-1 text-sm text-gray-500 cursor-pointer border-l border-black-200 bg-transparent focus:outline-none absolute top-0 right-0 multiselect-clear-all-button";
 
     clearAllButton.addEventListener("click", (event) => {
       event.preventDefault();

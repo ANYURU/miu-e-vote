@@ -10,6 +10,15 @@ export default class extends AbstractView {
     this.supabaseClient = supabaseClient;
     this.loading = false;
     this.isFetching = false;
+
+    this.subscriptions = [];
+    this.handleElectionsTableChanges =
+      this.handleElectionsTableChanges.bind(this);
+  }
+
+  handleElectionsTableChanges(payload) {
+    console.log("Election table changed: ", payload);
+    this.renderElections(document.getElementById("data-container"));
   }
 
   createElectionsTable(headers, data) {
@@ -89,12 +98,22 @@ export default class extends AbstractView {
         "p-1 group border-[0.5px] border-black-300 hover:border-black-600 hover:bg-black-100 rounded-lg";
       const editIcon = this.createEditIcon();
       editButton.appendChild(editIcon);
+      editButton.addEventListener("click", (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        this.handleElectionEdit(election.election_id);
+      });
 
       const deleteButton = document.createElement("button");
       deleteButton.className =
         "p-1 group border-[0.5px] border-black-300 hover:border-danger-600 hover:bg-danger-100 rounded-lg";
       const deleteIcon = this.createDeleteIcon();
       deleteButton.appendChild(deleteIcon);
+      deleteButton.addEventListener("click", async (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        await this.handleElectionDelete(election.election_id);
+      });
 
       actionsContainer.append(editButton, deleteButton);
       actionsData.appendChild(actionsContainer);
@@ -108,8 +127,81 @@ export default class extends AbstractView {
     return container;
   }
 
+  handleElectionEdit(election_id) {
+    navigateTo(`elections/${election_id}/edit`);
+  }
+
+  async handleElectionDelete(election_id) {
+    const electionFacultyDeletionPromise = supabaseClient
+      .from("election_faculties")
+      .delete()
+      .eq("election_id", election_id);
+
+    const electionDepartmentDeletionPromise = supabaseClient
+      .from("election_departments")
+      .delete()
+      .eq("election_id", election_id);
+
+    const electionPostsDeletionPromise = supabaseClient
+      .from("election_posts")
+      .delete()
+      .eq("election_id", election_id);
+
+    const electionYearsDeletionPromise = supabaseClient
+      .from("election_years")
+      .delete()
+      .eq("election_id", election_id);
+
+    const electionSemestersDeletionPromise = supabaseClient
+      .from("election_semesters")
+      .delete()
+      .eq("election_id", election_id);
+
+    await Promise.all([
+      electionFacultyDeletionPromise,
+      electionDepartmentDeletionPromise,
+      electionPostsDeletionPromise,
+      electionYearsDeletionPromise,
+      electionSemestersDeletionPromise,
+    ]);
+
+    const { error } = await supabaseClient
+      .from("elections")
+      .delete()
+      .eq("election_id", election_id);
+
+    if (error) {
+      this.showToast(error.message, "error");
+      return;
+    }
+
+    this.showToast("Successfully deleted election", "success");
+    return;
+  }
+
   async renderElections(dataContainer) {
-    const { data } = await supabaseClient.from("elections").select();
+    if (this.subscriptions.length > 0) {
+      this.subscriptions.forEach((subscription) => {
+        subscription.unsubscribe();
+      });
+    }
+
+    supabaseClient
+      .channel("Elections")
+      .on(
+        "postgres_changes",
+        { event: "DELETE", schema: "public", table: "elections" },
+        this.handleElectionsTableChanges
+      )
+      .subscribe();
+
+    const { data, error } = await supabaseClient.from("elections").select(`
+      election_title,
+      election_start_date,
+      election_end_date,
+      election_id
+    `);
+
     if (data && data?.length === 0) {
       const emptyElections = document.createElement("div");
       const emptyElectionsContainer = document.createElement("div");
@@ -241,6 +333,12 @@ export default class extends AbstractView {
           "w-full flex flex-wrap h-full overflow-y-auto border border-red-500";
         return container;
       }
+    }
+
+    
+
+    if (error) {
+      this.showToast(error.message, "error");
     }
 
     // removeAllChildren(dataContainer);
